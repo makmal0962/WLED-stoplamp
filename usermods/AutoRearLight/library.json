@@ -1,0 +1,20 @@
+{
+  "name": "AutoRearLight",
+  "version": "1.0.0",
+  "description": "WLED usermod for motorcycle rear lighting — turn signals, hazard detection, brake flash, and tail/idle state switching as a real-time LED overlay.",
+  "keywords": "wled, usermod, motorcycle, turn signal, brake light, hazard",
+  "homepage": "",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "MikaTsuki"
+    }
+  ],
+  "frameworks": "arduino",
+  "platforms": ["espressif8266", "espressif32", "raspberrypi"],
+  "build": {
+    "includeDir": "../../wled00",
+    "libLDFMode": "chain+",
+    "libArchive": false
+  }
+}
