@@ -563,9 +563,9 @@ class AutoRearLightUsermod : public Usermod {
     // Hazard uses strip1DHazardLen pixels centered on the strip.
     // Both use the same wipeState/wipeColumn system as 2D.
     if (is1D) {
-      uint16_t total    = strip.getLengthTotal();
-      uint16_t turnLen  = min((uint16_t)strip1DTurnLen,   total);
-      uint16_t hazLen   = min((uint16_t)strip1DHazardLen, total);
+      uint16_t total   = strip.getLengthTotal();
+      uint16_t turnLen = min((uint16_t)strip1DTurnLen,   total);
+      uint16_t hazLen  = min((uint16_t)strip1DHazardLen, total);
 
       if (brake && brakeFlashState) return; // Skip turn overlay during brake flash-on phase
 
@@ -585,20 +585,22 @@ class AutoRearLightUsermod : public Usermod {
         } else {
           // Turn: wipe animation over strip1DTurnLen pixels from the outer edge inward.
           // wipeColumn is in pixel units here (virtual patternW = turnLen).
+          // Invariant: wipeColumn == 0 always means "blank" (post-wipe-out or not started).
+          //            wipeColumn == turnLen in WIPE_IDLE means "fully shown".
 
-          // Signal change → reset wipe
+          // Signal change mid-animation → restart wipe from blank
           if (signalState != prevSignalState) {
-            wipeColumn      = 0;
-            wipeState       = WIPE_IN;
-            requestWipeIn   = false;
-            requestWipeOut  = false;
+            wipeColumn     = 0;
+            wipeState      = WIPE_IN;
+            requestWipeIn  = false;
+            requestWipeOut = false;
           }
 
           // Consume wipe intent from loop()
           if (requestWipeIn) {
             wipeColumn    = 0;
             wipeState     = WIPE_IN;
-            wipeStartTime = now; // start 1 frame delay
+            wipeStartTime = now;
             requestWipeIn = false;
           }
           if (requestWipeOut) {
@@ -613,18 +615,17 @@ class AutoRearLightUsermod : public Usermod {
             switch (wipeState) {
               case WIPE_IN:
                 if (wipeColumn < turnLen) wipeColumn++;
-                else wipeState = WIPE_IDLE;
+                else wipeState = WIPE_IDLE; // wipeColumn == turnLen: fully shown
                 break;
               case WIPE_OUT:
                 if (wipeOutMode == 0) {
                   if (wipeColumn > 0) wipeColumn--;
-                  else wipeState = WIPE_IDLE;
+                  else wipeState = WIPE_IDLE; // wipeColumn already 0: blank sentinel
                 } else if (wipeOutMode == 1) {
                   if (wipeColumn < turnLen) wipeColumn++;
-                  else wipeState = WIPE_IDLE;
+                  else { wipeColumn = 0; wipeState = WIPE_IDLE; } // normalize to blank sentinel
                 } else { // mode 2: hard blank
-                  wipeColumn = turnLen;
-                  wipeState  = WIPE_IDLE;
+                  wipeColumn = 0; wipeState = WIPE_IDLE;          // normalize to blank sentinel
                 }
                 break;
               case WIPE_IDLE: break;
@@ -632,12 +633,13 @@ class AutoRearLightUsermod : public Usermod {
           }
           if (wipeColumn > turnLen) wipeColumn = turnLen;
 
-          // Draw range (same logic as 2D)
+          // Draw range for active wipe frames.
+          // wipeColumn == 0 in WIPE_IDLE means blank (post-wipe-out): drawStart == drawEnd → nothing drawn.
           uint16_t drawStart = 0;
           uint16_t drawEnd   = wipeColumn;
-          if (wipeState == WIPE_OUT) {
-            if (wipeOutMode == 1) { drawStart = wipeColumn; drawEnd = turnLen; }
-            else if (wipeOutMode == 2) { drawStart = drawEnd = 0; }
+          if (wipeState == WIPE_OUT && wipeOutMode == 1) {
+            drawStart = wipeColumn;
+            drawEnd   = turnLen;
           }
 
           // Draw pixels from outer edge inward
@@ -653,11 +655,11 @@ class AutoRearLightUsermod : public Usermod {
     } // end 1D path
 
     // ===== 2D PATH =====
-    if (!anySignal) {
+    // Do not early-exit if a wipe-out is still running — it must be allowed to finish
+    // even after signalState has already returned to SIG_NONE.
+    // Only skip if truly idle with nothing to draw.
+    if (!anySignal && wipeState == WIPE_IDLE) {
       prevSignalState = signalState;
-      // force reset wipe so it doesn't show full
-      wipeColumn = 0;
-      wipeState = WIPE_IDLE;
       return;
     }
 
@@ -668,14 +670,13 @@ class AutoRearLightUsermod : public Usermod {
 
     const uint8_t* pattern;
     uint16_t patternW, patternH;
-    int offsetX;
+    int offsetX, offsetY;
     bool isProgmem = false;
 
     // ===== PATTERN SELECTION =====
     // Use file-loaded pattern if available AND pointer is non-null.
     // Null check is critical: malloc may have failed silently on low-RAM devices.
     // A null pattern pointer always falls back to PROGMEM.
-    int offsetY;
     switch (signalState) {
       case SIG_HAZARD:
         if (patternsLoaded && patternHazard) {
@@ -685,9 +686,8 @@ class AutoRearLightUsermod : public Usermod {
           pattern = &arrowHazard[0][0]; patternW = ARRAY_W(arrowHazard); patternH = ARRAY_H(arrowHazard);
           isProgmem = true;
         }
-        offsetX = centerOffsetX(patternW); // Dead center, safe against underflow
+        offsetX = centerOffsetX(patternW);
         offsetY = min((int)centerOffsetY(patternH), max(0, (int)matrixHeight - (int)patternH));
-
         break;
 
       case SIG_LEFT:
@@ -700,7 +700,6 @@ class AutoRearLightUsermod : public Usermod {
         }
         offsetX = 0; // Left-aligned
         offsetY = min((int)centerOffsetY(patternH), max(0, (int)matrixHeight - (int)patternH));
-
         break;
 
       case SIG_RIGHT:
@@ -713,17 +712,16 @@ class AutoRearLightUsermod : public Usermod {
         }
         offsetX = (int)matrixWidth - (int)patternW; // Right-aligned
         offsetY = min((int)centerOffsetY(patternH), max(0, (int)matrixHeight - (int)patternH));
-
         break;
 
       default:
+        // SIG_NONE but wipe still running — no pattern geometry available, nothing to draw.
         prevSignalState = signalState;
-        return; // SIG_NONE — should not reach here
+        return;
     }
 
-
     // ===== WIPE REQUEST HANDLING =====
-    // Signal change mid-animation → reset wipe to avoid glitch
+    // Signal change mid-animation → restart wipe from blank to avoid visual glitch
     if (signalState != prevSignalState) {
       wipeColumn     = 0;
       wipeState      = WIPE_IN;
@@ -731,47 +729,47 @@ class AutoRearLightUsermod : public Usermod {
       requestWipeOut = false;
     }
 
-    // Consume wipe intent from loop() BEFORE animation step and draw range calc
+    // Consume wipe intent from loop() BEFORE animation step and draw
     if (requestWipeIn) {
-      wipeColumn      = 0;
-      wipeState       = WIPE_IN;
-      wipeStartTime   = now;
-      requestWipeIn   = false;
+      wipeColumn    = 0;
+      wipeState     = WIPE_IN;
+      wipeStartTime = now;
+      requestWipeIn = false;
     }
     if (requestWipeOut && !holdOnOff) {
       wipeState      = WIPE_OUT;
       wipeColumn     = (wipeOutMode == 0) ? patternW : 0;
       requestWipeOut = false;
     } else {
-      requestWipeOut = false; // discard if holdOnOff
+      requestWipeOut = false; // discard: either holdOnOff=true, or already cleared above
     }
-
-    prevSignalState = signalState;
 
     // ===== HAZARD: FULL FRAME, NO WIPE =====
     if (signalState == SIG_HAZARD) {
       if (signalActive) drawFull(pattern, patternW, patternH, offsetX, offsetY, r, g, b, isProgmem);
+      prevSignalState = signalState;
       return;
     }
 
     // ===== WIPE ANIMATION STEP =====
+    // Invariant: wipeColumn == 0 in WIPE_IDLE → blank (post-wipe-out or not started).
+    //            wipeColumn == patternW in WIPE_IDLE → fully shown (post-wipe-in, holding).
     if (now - lastWipeStep >= wipeSpeedMs) {
       lastWipeStep = now;
       switch (wipeState) {
         case WIPE_IN:
           if (wipeColumn < patternW) wipeColumn++;
-          else wipeState = WIPE_IDLE;
+          else wipeState = WIPE_IDLE; // wipeColumn == patternW: fully shown
           break;
         case WIPE_OUT:
           if (wipeOutMode == 0) {
             if (wipeColumn > 0) wipeColumn--;
-            else wipeState = WIPE_IDLE;
+            else wipeState = WIPE_IDLE; // wipeColumn already 0: blank sentinel
           } else if (wipeOutMode == 1) {
             if (wipeColumn < patternW) wipeColumn++;
-            else wipeState = WIPE_IDLE;
-          } else {
-            wipeColumn = patternW;
-            wipeState  = WIPE_IDLE;
+            else { wipeColumn = 0; wipeState = WIPE_IDLE; } // normalize to blank sentinel
+          } else { // mode 2: hard blank
+            wipeColumn = 0; wipeState = WIPE_IDLE;          // normalize to blank sentinel
           }
           break;
         case WIPE_IDLE: break;
@@ -780,32 +778,33 @@ class AutoRearLightUsermod : public Usermod {
     if (wipeColumn > patternW) wipeColumn = patternW;
 
     // ===== DRAW RANGE CALCULATION =====
+    // Only meaningful during active wipe frames (wipeState != WIPE_IDLE).
+    // WIPE_IN:          draw columns [0, wipeColumn)
+    // WIPE_OUT mode 0 (reverse):       draw columns [0, wipeColumn)
+    // WIPE_OUT mode 1 (forward push):  draw columns [wipeColumn, patternW)
     uint16_t drawStart = 0;
     uint16_t drawEnd   = wipeColumn;
-
-    if (wipeState == WIPE_OUT) {
-      if (wipeOutMode == 1) {
-        drawStart = wipeColumn;
-        drawEnd   = patternW;
-      } else if (wipeOutMode == 2) { // hard off
-        drawStart = drawEnd = 0;
-      }
+    if (wipeState == WIPE_OUT && wipeOutMode == 1) {
+      drawStart = wipeColumn;
+      drawEnd   = patternW;
     }
 
-    // ===== DRAW WIPE =====
-    if (wipeState == WIPE_IDLE) { // Waiting for next wipe
-      if (wipeColumn == 0) return; // empty (wipe out -> wipe in)
-      if (wipeColumn == patternW && anySignal ) { // full (wipe in -> wipe out)
+    // ===== DRAW =====
+    if (wipeState == WIPE_IDLE) {
+      // wipeColumn == 0:        blank sentinel (post-wipe-out) — background only, nothing to draw
+      // wipeColumn == patternW: fully shown (post-wipe-in, holding until next wipe-out)
+      if (wipeColumn == patternW && anySignal) {
         drawFull(pattern, patternW, patternH, offsetX, offsetY, r, g, b, isProgmem);
-        return;
       }
-    }
-    else { // draw wipe
+    } else {
+      // Active wipe animation — draw visible columns only
       for (uint16_t i = drawStart; i < drawEnd; i++) {
         int col = (signalState == SIG_LEFT) ? ((int)patternW - 1) - (int)i : (int)i;
         drawColumn(pattern, patternW, patternH, col, offsetX, offsetY, r, g, b, isProgmem);
       }
     }
+
+    prevSignalState = signalState;
   }
 
   void connected() override {}
