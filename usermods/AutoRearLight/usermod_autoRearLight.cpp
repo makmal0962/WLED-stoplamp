@@ -3,6 +3,14 @@
 
 #define USERMOD_ID_AUTOREARL 200
 
+#ifdef AUTOREARL_DISABLE_FILE_PATTERNS
+#warning "AutoRearLight: File Pattern Loading is DISABLED. Using Built-in PROGMEM patterns only."
+#endif
+
+// Compile with -D AUTOREARL_DISABLE_FILE_PATTERNS to skip all LittleFS pattern loading.
+// Use this flag when debugging bootloops or on RAM-constrained builds (e.g. ESP8266).
+// When defined, the usermod always uses the built-in PROGMEM arrow patterns.
+
 // Macro to get the column count (width) of a 2D array
 #define ARRAY_W(arr) (sizeof(arr[0]) / sizeof(arr[0][0]))
 // Macro to get the row count (height) of a 2D array
@@ -13,36 +21,36 @@
 // Each cell: 0 = off, 1 = on. Rows = Y, Columns = X.
 
 const uint8_t PROGMEM arrowLeft[8][8] = {
-  {0,0,0,0,1,0,1,0},
-  {0,0,0,1,0,1,0,0},
-  {0,0,1,0,1,0,0,0},
-  {0,1,0,1,0,0,0,0},
-  {1,0,1,0,0,0,0,0},
-  {0,1,0,1,0,0,0,0},
-  {0,0,1,0,1,0,0,0},
-  {0,0,0,1,0,1,0,0},
+  {0,0,0,1,1,1,0,0},
+  {0,0,1,1,1,0,0,0},
+  {0,1,1,1,0,0,0,0},
+  {1,1,1,0,0,0,0,0},
+  {1,1,1,0,0,0,0,0},
+  {0,1,1,1,0,0,0,0},
+  {0,0,1,1,1,0,0,0},
+  {0,0,0,1,1,1,0,0},
 };
 
 const uint8_t PROGMEM arrowRight[8][8] = {
-  {0,1,0,1,0,0,0,0},
-  {0,0,1,0,1,0,0,0},
-  {0,0,0,1,0,1,0,0},
-  {0,0,0,0,1,0,1,0},
-  {0,0,0,0,0,1,0,1},
-  {0,0,0,0,1,0,1,0},
-  {0,0,0,1,0,1,0,0},
-  {0,0,1,0,1,0,0,0},
+  {0,0,1,1,1,0,0,0},
+  {0,0,0,1,1,1,0,0},
+  {0,0,0,0,1,1,1,0},
+  {0,0,0,0,0,1,1,1},
+  {0,0,0,0,0,1,1,1},
+  {0,0,0,0,1,1,1,0},
+  {0,0,0,1,1,1,0,0},
+  {0,0,1,1,1,0,0,0},
 };
 
 const uint8_t PROGMEM arrowHazard[8][16] = {
-  {0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0},
-  {0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0},
-  {0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0},
-  {0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0},
+  {0,0,0,1,1,0,0,1,1,0,0,1,1,0,0,0},
+  {0,0,0,1,1,0,0,1,1,0,0,1,1,0,0,0},
+  {0,0,0,1,1,0,0,1,1,0,0,1,1,0,0,0},
+  {0,0,0,1,1,0,0,1,1,0,0,1,1,0,0,0},
+  {0,0,0,1,1,0,0,1,1,0,0,1,1,0,0,0},
   {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-  {0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0},
-  {0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0},
-  {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+  {0,0,0,1,1,0,0,1,1,0,0,1,1,0,0,0},
+  {0,0,0,1,1,0,0,1,1,0,0,1,1,0,0,0},
 };
 
 
@@ -82,12 +90,7 @@ class AutoRearLightUsermod : public Usermod {
     int8_t pinBrake    = 19;
     int8_t pinLeft     = 21;
     int8_t pinRight    = 22;
-  #elif defined(ARDUINO_ARCH_RP2040)
-    int8_t pinHeadlamp = 10;
-    int8_t pinBrake    = 11;
-    int8_t pinLeft     = 12;
-    int8_t pinRight    = 13;
-  #else // ESP8266 fallback
+  #elif defined(ARDUINO_ARCH_ESP8266)
     int8_t pinHeadlamp = 14;
     int8_t pinBrake    = 5;
     int8_t pinLeft     = 12;
@@ -107,8 +110,8 @@ class AutoRearLightUsermod : public Usermod {
   uint16_t wipeSpeedMs    = 10;  // Wipe animation step interval (ms per column)
 
   // ===== MATRIX DIMENSIONS =====
-  // Populated in setup() after WLED initializes the strip.
-  // Initialized to 0 to prevent premature access.
+  // Fetched dynamically every frame in handleOverlayDraw() to support
+  // live segment resizing and prevent premature access during boot.
   uint16_t matrixWidth  = 0;
   uint16_t matrixHeight = 0;
 
@@ -183,13 +186,17 @@ class AutoRearLightUsermod : public Usermod {
 
   // ===== PATTERN FILE =====
   // Path to a LittleFS text file containing custom pixel art patterns.
-  // Reloaded only when the filename changes in config.
+  // Reloaded deferred via needLoadPatterns flag — never loaded during setup() or readFromConfig()
+  // to avoid filesystem-not-ready crashes on ESP8266.
+  // Compile with -D AUTOREARL_DISABLE_FILE_PATTERNS to disable all file loading entirely.
   char patternFile[32] = "/autoRearLight.txt";
   char currentFile[32] = "";
+  bool needLoadPatterns = false; // Set by readFromConfig(); consumed safely in loop()
 
   // ===== DYNAMIC PATTERN BUFFERS =====
-  // Loaded from LittleFS at startup or on config change.
-  // Falls back to built-in PROGMEM patterns if file is missing or invalid.
+  // Loaded from LittleFS, or null if file loading is disabled/failed.
+  // All pointers are null-checked before use — a null pointer always falls back to PROGMEM.
+  // This prevents crashes from partial malloc failures on low-RAM devices.
   uint8_t* patternLeft   = nullptr; uint16_t patternLeftW   = 8,  patternLeftH   = 8;
   uint8_t* patternRight  = nullptr; uint16_t patternRightW  = 8,  patternRightH  = 8;
   uint8_t* patternHazard = nullptr; uint16_t patternHazardW = 16, patternHazardH = 8;
@@ -234,14 +241,19 @@ class AutoRearLightUsermod : public Usermod {
     patternsLoaded = false;
   }
 
+#ifndef AUTOREARL_DISABLE_FILE_PATTERNS
   // Parses a simple text file from LittleFS into pixel art pattern buffers.
   // File format:
   //   # left / # right / # hazard  → section header
   //   8x8                          → optional dimension hint (skipped)
   //   01100110                     → pixel row: '1' = on, anything else = off
   // Max 32 rows and 64 columns per pattern.
+  //
+  // Safe to call only after WLED has fully initialized (i.e. from loop(), not setup()).
+  // If any malloc fails, all buffers are freed and patternsLoaded stays false.
   void loadPatterns() {
     freePatterns();
+
     File f = WLED_FS.open(patternFile, "r");
     if (!f) return;
 
@@ -252,23 +264,32 @@ class AutoRearLightUsermod : public Usermod {
     uint16_t detectedW = 0;
     uint16_t rowCount  = 0;
 
-    // Temporary row buffer: max 32 rows × 64 columns
+    // Temporary row buffer: max 32 rows × 64 columns = 2048 bytes
+    // On ESP8266, this may fail if heap is fragmented — handled gracefully below.
     uint8_t (*tmp)[64] = (uint8_t(*)[64]) malloc(32 * 64);
-    if (!tmp) { f.close(); return; }
+    if (!tmp) { f.close(); return; } // malloc failed — silently fall back to PROGMEM
 
-    // Flush accumulated rows into the target pattern buffer
+    // Flush accumulated rows into the target pattern buffer.
+    // On malloc failure, frees all buffers so we never have a partial/corrupt state.
     auto commitPattern = [&]() {
       if (!target || rowCount == 0 || detectedW == 0) return;
       *targetW = detectedW;
       *targetH = rowCount;
       size_t sz = detectedW * rowCount;
       *target = (uint8_t*)malloc(sz);
-      if (!*target) return;
+      if (!*target) {
+        // malloc failed for this pattern — free everything and abort
+        free(tmp); tmp = nullptr;
+        freePatterns();
+        return;
+      }
       for (uint16_t r = 0; r < rowCount; r++)
         memcpy(*target + r * detectedW, tmp[r], detectedW);
     };
 
     while (f.available()) {
+      if (!tmp) break; // Aborted due to malloc failure
+
       String line = f.readStringUntil('\n');
       line.trim();
       if (line.length() == 0) continue;
@@ -295,11 +316,18 @@ class AutoRearLightUsermod : public Usermod {
       rowCount++;
     }
 
-    commitPattern(); // Flush the last section
+    if (tmp) {
+      commitPattern(); // Flush the last section
+      free(tmp);
+      patternsLoaded = (patternLeft != nullptr || patternRight != nullptr || patternHazard != nullptr);
+    }
     f.close();
-    free(tmp);
-    patternsLoaded = true;
   }
+#else
+  // File pattern loading is disabled at compile time.
+  // Always uses built-in PROGMEM patterns.
+  void loadPatterns() {}
+#endif
 
   // ===== 2D DRAW HELPERS =====
   // Both functions use row-major indexing: idx = y * patternW + x.
@@ -355,15 +383,24 @@ class AutoRearLightUsermod : public Usermod {
     pinMode(pinLeft,     INPUT);
     pinMode(pinRight,    INPUT);
 
-    // Read matrix dimensions after WLED has initialized the LED strip.
-    // matrixHeight == 1 means 1D strip mode.
-    matrixWidth  = strip.getMainSegment().virtualWidth();
-    matrixHeight = strip.getMainSegment().virtualHeight();
+    // Matrix dimensions are fetched dynamically in handleOverlayDraw().
+    // Do NOT call strip.getMainSegment() here — WLED strip may not be ready yet.
 
-    loadPatterns();
+    // Do NOT call loadPatterns() here — LittleFS is not mounted yet during setup().
+    // Pattern loading is deferred to loop() via needLoadPatterns flag.
+    // Initial load is triggered by readFromConfig() setting needLoadPatterns = true.
   }
 
   void loop() override {
+#ifndef AUTOREARL_DISABLE_FILE_PATTERNS
+    // Deferred pattern load: safe to call here because WLED and LittleFS are fully
+    // initialized by the time loop() runs. Never load during setup() or readFromConfig().
+    if (needLoadPatterns) {
+      loadPatterns();
+      needLoadPatterns = false;
+    }
+#endif
+
     if (!enabled) return;
     unsigned long now = millis();
 
@@ -424,10 +461,14 @@ class AutoRearLightUsermod : public Usermod {
     // ===== STATE MACHINE =====
     // IDLE: headlamp off. TAIL: headlamp on.
     // Preset is applied once on each transition.
+    // Guard: skip applyPreset during the first 3 seconds of boot to let WLED
+    // finish initializing before we switch presets.
     State newState = head ? TAIL : IDLE;
     if (newState != currentState) {
       currentState = newState;
-      applyPreset(head ? presetTail : presetIdle);
+      if (millis() > 3000) {
+        applyPreset(head ? presetTail : presetIdle);
+      }
     }
 
     // ===== WIPE INTENT =====
@@ -452,6 +493,13 @@ class AutoRearLightUsermod : public Usermod {
   // Called every frame by WLED after the base effect is rendered.
   // Supports both 1D (linear strip) and 2D (matrix) configurations.
   void handleOverlayDraw() override {
+    if (strip.getLengthTotal() == 0 ) return;
+    // Fetch matrix dimensions dynamically every frame.
+    // This guarantees safety across live segment resizing and avoids
+    // calling strip methods before WLED is fully initialized.
+    matrixWidth  = strip.getMainSegment().virtualWidth();
+    matrixHeight = strip.getMainSegment().virtualHeight();
+
     if (!enabled || matrixWidth <= 1) return;
 
     // Global brightness cap: clamp to 50% (128/255) while in TAIL state.
@@ -608,7 +656,9 @@ class AutoRearLightUsermod : public Usermod {
     bool isProgmem = false;
 
     // ===== PATTERN SELECTION =====
-    // Use file-loaded pattern if available; fall back to built-in PROGMEM pattern.
+    // Use file-loaded pattern if available AND pointer is non-null.
+    // Null check is critical: malloc may have failed silently on low-RAM devices.
+    // A null pattern pointer always falls back to PROGMEM.
     switch (signalState) {
       case SIG_HAZARD:
         if (patternsLoaded && patternHazard) {
@@ -744,18 +794,18 @@ class AutoRearLightUsermod : public Usermod {
   uint16_t getId() override { return USERMOD_ID_AUTOREARL; }
 
   // ===== CONFIG SERIALIZATION =====
-
+#ifndef AUTOREARL_DISABLE_CONFIG
   void addToConfig(JsonObject& root) override {
     JsonObject top = root.createNestedObject("AutoRearLight");
     top["Enable Usermod"] = enabled;
 
     JsonObject overlay = top.createNestedObject("Overlay Settings");
     overlay["Overlay Brightness"]                                           = overlayBrightness;
-    overlay["Keep Turns Animation -Except Hazard- When Signals Blink OFF"] = holdOnOff;
+    overlay["Keep Turns Pattern When Signals Falling"] = holdOnOff;
     overlay["Exit Style, 0: Rev, 1: Fwd, 2: OFF"]                         = wipeOutMode;
-    overlay["Background Red"]   = bgR;
-    overlay["Background Green"] = bgG;
-    overlay["Background Blue"]  = bgB;
+    overlay["Bg Red"]   = bgR;
+    overlay["Bg Green"] = bgG;
+    overlay["Bg Blue"]  = bgB;
     overlay["Turn Red"]         = turnR;
     overlay["Turn Green"]       = turnG;
     overlay["Turn Blue"]        = turnB;
@@ -766,18 +816,18 @@ class AutoRearLightUsermod : public Usermod {
     top["Pattern File"] = patternFile;
 
     JsonObject strip1D = top.createNestedObject("1D Strip Settings");
-    strip1D["Turn Signal Length (pixels)"] = strip1DTurnLen;
-    strip1D["Hazard Length (pixels)"]      = strip1DHazardLen;
+    strip1D["Turn Signal Length (px)"] = strip1DTurnLen;
+    strip1D["Hazard Length (px)"]      = strip1DHazardLen;
 
-    JsonObject pins = top.createNestedObject("Hardware Pins");
-    pins["Headlamp Input"]   = pinHeadlamp;
-    pins["Brake Input"]      = pinBrake;
-    pins["Left Turn Input"]  = pinLeft;
-    pins["Right Turn Input"] = pinRight;
+    JsonObject pins = top.createNestedObject("Hardware Input Pins");
+    pins["Headlamp"]   = pinHeadlamp;
+    pins["Brake"]      = pinBrake;
+    pins["Left Turn"]  = pinLeft;
+    pins["Right Turn"] = pinRight;
 
     JsonObject presets = top.createNestedObject("Preset IDs");
-    presets["Idle Preset"] = presetIdle;
-    presets["Tail Preset"] = presetTail;
+    presets["Idle"] = presetIdle;
+    presets["Tail"] = presetTail;
 
     JsonObject timing = top.createNestedObject("Timing");
     timing["Pins Debounce (ms)"]       = debounceMs;
@@ -795,11 +845,11 @@ class AutoRearLightUsermod : public Usermod {
 
     JsonObject overlay = top["Overlay Settings"];
     configComplete &= getJsonValue(overlay["Overlay Brightness"],                                           overlayBrightness, 255);
-    configComplete &= getJsonValue(overlay["Keep Turns Animation -Except Hazard- When Signals Blink OFF"], holdOnOff,         false);
+    configComplete &= getJsonValue(overlay["Keep Turns Pattern When Signals Falling"], holdOnOff,         false);
     configComplete &= getJsonValue(overlay["Exit Style, 0: Rev, 1: Fwd, 2: OFF"],                         wipeOutMode,       1);
-    configComplete &= getJsonValue(overlay["Background Red"],   bgR,    40);
-    configComplete &= getJsonValue(overlay["Background Green"], bgG,    0);
-    configComplete &= getJsonValue(overlay["Background Blue"],  bgB,    0);
+    configComplete &= getJsonValue(overlay["Bg Red"],   bgR,    40);
+    configComplete &= getJsonValue(overlay["Bg Green"], bgG,    0);
+    configComplete &= getJsonValue(overlay["Bg Blue"],  bgB,    0);
     configComplete &= getJsonValue(overlay["Turn Red"],         turnR,   255);
     configComplete &= getJsonValue(overlay["Turn Green"],       turnG,   165);
     configComplete &= getJsonValue(overlay["Turn Blue"],        turnB,   0);
@@ -807,43 +857,40 @@ class AutoRearLightUsermod : public Usermod {
     configComplete &= getJsonValue(overlay["Hazard Green"],     hazardG, 165);
     configComplete &= getJsonValue(overlay["Hazard Blue"],      hazardB, 0);
 
-    // Pattern file: reload only if the filename has changed since last config read.
+    // Pattern file: compare with currentFile to detect changes.
+    // Do NOT call loadPatterns() here — LittleFS may not be ready.
+    // Set needLoadPatterns = true instead; loop() will handle it safely.
     {
       const char* tmp_pf = top["Pattern File"] | "/autoRearLight.txt";
-      strncpy(patternFile, tmp_pf, sizeof(patternFile) - 1);
-      patternFile[sizeof(patternFile) - 1] = '\0';
-    }
-    if (strcmp(patternFile, currentFile) != 0) {
-      strncpy(currentFile, patternFile, sizeof(currentFile) - 1);
-      currentFile[sizeof(currentFile) - 1] = '\0';
-      loadPatterns();
+      if (strcmp(tmp_pf, currentFile) != 0) {
+        strncpy(patternFile, tmp_pf, sizeof(patternFile) - 1);
+        patternFile[sizeof(patternFile) - 1] = '\0';
+        strncpy(currentFile, patternFile, sizeof(currentFile) - 1);
+        currentFile[sizeof(currentFile) - 1] = '\0';
+        needLoadPatterns = true; // Deferred — consumed in loop()
+      }
     }
 
     JsonObject strip1D = top["1D Strip Settings"];
-    configComplete &= getJsonValue(strip1D["Turn Signal Length (pixels)"], strip1DTurnLen,   8);
-    configComplete &= getJsonValue(strip1D["Hazard Length (pixels)"],      strip1DHazardLen, 8);
+    configComplete &= getJsonValue(strip1D["Turn Signal Length (px)"], strip1DTurnLen,   8);
+    configComplete &= getJsonValue(strip1D["Hazard Length (px)"],      strip1DHazardLen, 8);
 
-    JsonObject pins = top["Hardware Pins"];
+    JsonObject pins = top["Hardware Input Pins"];
     #ifdef ARDUINO_ARCH_ESP32
-    configComplete &= getJsonValue(pins["Headlamp Input"],   pinHeadlamp, 18);
-    configComplete &= getJsonValue(pins["Brake Input"],      pinBrake,    19);
-    configComplete &= getJsonValue(pins["Left Turn Input"],  pinLeft,     21);
-    configComplete &= getJsonValue(pins["Right Turn Input"], pinRight,    22);
-    #elif defined(ARDUINO_ARCH_RP2040)
-    configComplete &= getJsonValue(pins["Headlamp Input"],   pinHeadlamp, 10);
-    configComplete &= getJsonValue(pins["Brake Input"],      pinBrake,    11);
-    configComplete &= getJsonValue(pins["Left Turn Input"],  pinLeft,     12);
-    configComplete &= getJsonValue(pins["Right Turn Input"], pinRight,    13);
-    #else
-    configComplete &= getJsonValue(pins["Headlamp Input"],   pinHeadlamp, 14);
-    configComplete &= getJsonValue(pins["Brake Input"],      pinBrake,    5);
-    configComplete &= getJsonValue(pins["Left Turn Input"],  pinLeft,     12);
-    configComplete &= getJsonValue(pins["Right Turn Input"], pinRight,    13);
+    configComplete &= getJsonValue(pins["Headlamp"],   pinHeadlamp, 18);
+    configComplete &= getJsonValue(pins["Brake"],      pinBrake,    19);
+    configComplete &= getJsonValue(pins["Left Turn"],  pinLeft,     21);
+    configComplete &= getJsonValue(pins["Right Turn"], pinRight,    22);
+    #elif defined(ARDUINO_ARCH_ESP8266)
+    configComplete &= getJsonValue(pins["Headlamp"],   pinHeadlamp, 14);
+    configComplete &= getJsonValue(pins["Brake"],      pinBrake,    5);
+    configComplete &= getJsonValue(pins["Left Turn"],  pinLeft,     12);
+    configComplete &= getJsonValue(pins["Right Turn"], pinRight,    13);
     #endif
 
     JsonObject presets = top["Preset IDs"];
-    configComplete &= getJsonValue(presets["Idle Preset"], presetIdle, 1);
-    configComplete &= getJsonValue(presets["Tail Preset"], presetTail, 2);
+    configComplete &= getJsonValue(presets["Idle"], presetIdle, 1);
+    configComplete &= getJsonValue(presets["Tail"], presetTail, 2);
 
     JsonObject timing = top["Timing"];
     configComplete &= getJsonValue(timing["Pins Debounce (ms)"],       debounceMs,     50);
@@ -861,6 +908,11 @@ class AutoRearLightUsermod : public Usermod {
 
     return configComplete;
   }
+#else
+  void addToConfig(JsonObject& root) override {}
+  bool readFromConfig(JsonObject& root) override {}   
+  #warning "AutoRearLight: Usermod config is DISABLED. Using hardcoded settings."
+#endif // AUTOREARL_DISABLE_CONFIG
 
   // ===== INFO PANEL =====
   // Displayed in the WLED info tab for live debugging.
@@ -887,10 +939,13 @@ class AutoRearLightUsermod : public Usermod {
     matArr.add(matrixHeight);
 
     JsonArray patArr = user.createNestedArray("Patterns");
+#ifdef AUTOREARL_DISABLE_FILE_PATTERNS
+    patArr.add("disabled (AUTOREARL_DISABLE_FILE_PATTERNS)");
+#else
     patArr.add(patternsLoaded ? patternFile : "defaults");
+#endif // AUTOREARL_DISABLE_FILE_PATTERNS
   }
 };
 
-// Static instance required by the WLED usermod registration system.
 static AutoRearLightUsermod autoRearLight;
 REGISTER_USERMOD(autoRearLight);
