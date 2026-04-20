@@ -38,26 +38,28 @@ Known issues:
 // Fallback patterns used when no file is loaded from LittleFS.
 // Each cell: 0 = off, 1 = on. Rows = Y, Columns = X.
 
-const uint8_t PROGMEM arrowLeft[8][9] = {
-  {0,0,0,1,1,0,0,1,1},
-  {0,0,1,1,0,0,1,1,0},
-  {0,1,1,0,0,1,1,0,0},
-  {1,1,0,0,1,1,0,0,0},
-  {1,1,0,0,1,1,0,0,0},
-  {0,1,1,0,0,1,1,0,0},
-  {0,0,1,1,0,0,1,1,0},
-  {0,0,0,1,1,0,0,1,1},
+const uint8_t PROGMEM arrowLeft[9][10] = {
+  {0,0,0,0,1,1,0,0,1,1},
+  {0,0,0,1,1,0,0,1,1,0},
+  {0,0,1,1,0,0,1,1,0,0},
+  {0,1,1,0,0,1,1,0,0,0},
+  {1,1,0,0,1,1,0,0,0,0},
+  {0,1,1,0,0,1,1,0,0,0},
+  {0,0,1,1,0,0,1,1,0,0},
+  {0,0,0,1,1,0,0,1,1,0},
+  {0,0,0,0,1,1,0,0,1,1},
 };
 
-const uint8_t PROGMEM arrowRight[8][9] = {
-  {1,1,0,0,1,1,0,0,0},
-  {0,0,1,0,0,1,1,0,0},
-  {0,0,0,1,0,0,1,1,0},
-  {0,0,0,0,1,0,0,1,1},
-  {0,0,0,1,1,0,0,1,1},
-  {0,0,1,1,0,0,1,1,0},
-  {0,1,1,0,0,1,1,0,0},
-  {1,1,0,0,1,1,0,0,0},
+const uint8_t PROGMEM arrowRight[9][10] = {
+  {1,1,0,0,1,1,0,0,0,0},
+  {0,1,1,0,0,1,1,0,0,0},
+  {0,0,1,1,0,0,1,1,0,0},
+  {0,0,0,1,1,0,0,1,1,0},
+  {0,0,0,0,1,1,0,0,1,1},
+  {0,0,0,1,1,0,0,1,1,0},
+  {0,0,1,1,0,0,1,1,0,0},
+  {0,1,1,0,0,1,1,0,0,0},
+  {1,1,0,0,1,1,0,0,0,0},
 };
 
 const uint8_t PROGMEM arrowHazard[8][10] = {
@@ -606,9 +608,7 @@ class AutoRearLightUsermod : public Usermod {
           }
 
           // Advance wipe animation
-          if (wipeState == WIPE_IN && now == wipeStartTime) {
-          } // delay 1 frame before wipe in
-          else if (now - lastWipeStep >= wipeSpeedMs) {
+          if (now - lastWipeStep >= wipeSpeedMs) {
             lastWipeStep = now;
             switch (wipeState) {
               case WIPE_IN:
@@ -655,6 +655,9 @@ class AutoRearLightUsermod : public Usermod {
     // ===== 2D PATH =====
     if (!anySignal) {
       prevSignalState = signalState;
+      // force reset wipe so it doesn't show full
+      wipeColumn = 0;
+      wipeState = WIPE_IDLE;
       return;
     }
 
@@ -752,9 +755,7 @@ class AutoRearLightUsermod : public Usermod {
     }
 
     // ===== WIPE ANIMATION STEP =====
-    if (wipeState == WIPE_IN && now == wipeStartTime) {
-    } // delay 1 frame before wipe in
-    else if (now - lastWipeStep >= wipeSpeedMs) {
+    if (now - lastWipeStep >= wipeSpeedMs) {
       lastWipeStep = now;
       switch (wipeState) {
         case WIPE_IN:
@@ -786,19 +787,26 @@ class AutoRearLightUsermod : public Usermod {
       if (wipeOutMode == 1) {
         drawStart = wipeColumn;
         drawEnd   = patternW;
-      } else if (wipeOutMode == 2) {
+      } else if (wipeOutMode == 2) { // hard off
         drawStart = drawEnd = 0;
       }
     }
 
     // ===== DRAW WIPE =====
-    // Suppress draw only when idle after a completed wipe-out (fully hidden state)
-    if (!(wipeState == WIPE_IDLE && wipeColumn == patternW)) {
+    if (wipeState == WIPE_IDLE) { // Waiting for next wipe
+      if (wipeColumn == 0) return; // empty (wipe out -> wipe in)
+      if (wipeColumn == patternW && anySignal ) { // full (wipe in -> wipe out)
+        drawFull(pattern, patternW, patternH, offsetX, offsetY, r, g, b, isProgmem);
+        return;
+      }
+    }
+    else { // draw wipe
       for (uint16_t i = drawStart; i < drawEnd; i++) {
         int col = (signalState == SIG_LEFT) ? ((int)patternW - 1) - (int)i : (int)i;
         drawColumn(pattern, patternW, patternH, col, offsetX, offsetY, r, g, b, isProgmem);
       }
-    }  }
+    }
+  }
 
   void connected() override {}
 
