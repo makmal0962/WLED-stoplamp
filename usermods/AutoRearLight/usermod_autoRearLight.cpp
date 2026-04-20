@@ -1,15 +1,34 @@
+/*
+usermod_autoRearLight.cpp
+Created by MikaTsuki
+Find me on Facebook: MikaTsuki
+
+Created: 2026-03-29
+Last Updated: 2026-04-20
+
+Useful flags in your platformio_override.ini:
+-D AUTOREARL_DISABLE_FILE_PATTERNS
+-D AUTOREARL_DISABLE_CONFIG
+
+Compile with -D AUTOREARL_DISABLE_FILE_PATTERNS to skip all LittleFS pattern loading.
+Use this flag when debugging bootloops or on RAM-constrained builds (e.g. ESP8266).
+When defined, the usermod always uses the built-in PROGMEM arrow patterns.
+
+Use -D AUTOREARL_DISABLE_CONFIG flag to disable usermod config
+*/
+
 #include "wled.h"
 #include "Arduino.h"
 
 #define USERMOD_ID_AUTOREARL 200
 
 #ifdef AUTOREARL_DISABLE_FILE_PATTERNS
-#warning "AutoRearLight: File Pattern Loading is DISABLED. Using Built-in PROGMEM patterns only."
+  #warning "AutoRearLight: File Pattern Loading is DISABLED. Using hardcoded patterns only."
 #endif
 
-// Compile with -D AUTOREARL_DISABLE_FILE_PATTERNS to skip all LittleFS pattern loading.
-// Use this flag when debugging bootloops or on RAM-constrained builds (e.g. ESP8266).
-// When defined, the usermod always uses the built-in PROGMEM arrow patterns.
+#ifdef ARDUINO_ARCH_ESP8266
+  #warning "AutoRearLight: You are using ESP8266! Don't DM me if your board (or YOU) crashes in the middle of the road!"
+#endif
 
 // Macro to get the column count (width) of a 2D array
 #define ARRAY_W(arr) (sizeof(arr[0]) / sizeof(arr[0][0]))
@@ -20,37 +39,37 @@
 // Fallback patterns used when no file is loaded from LittleFS.
 // Each cell: 0 = off, 1 = on. Rows = Y, Columns = X.
 
-const uint8_t PROGMEM arrowLeft[8][8] = {
-  {0,0,0,1,1,1,0,0},
-  {0,0,1,1,1,0,0,0},
-  {0,1,1,1,0,0,0,0},
-  {1,1,1,0,0,0,0,0},
-  {1,1,1,0,0,0,0,0},
-  {0,1,1,1,0,0,0,0},
-  {0,0,1,1,1,0,0,0},
-  {0,0,0,1,1,1,0,0},
+const uint8_t PROGMEM arrowLeft[8][9] = {
+  {0,0,0,1,1,0,0,1,1},
+  {0,0,1,1,0,0,1,1,0},
+  {0,1,1,0,0,1,1,0,0},
+  {1,1,0,0,1,1,0,0,0},
+  {1,1,0,0,1,1,0,0,0},
+  {0,1,1,0,0,1,1,0,0},
+  {0,0,1,1,0,0,1,1,0},
+  {0,0,0,1,1,0,0,1,1},
 };
 
-const uint8_t PROGMEM arrowRight[8][8] = {
-  {0,0,1,1,1,0,0,0},
-  {0,0,0,1,1,1,0,0},
-  {0,0,0,0,1,1,1,0},
-  {0,0,0,0,0,1,1,1},
-  {0,0,0,0,0,1,1,1},
-  {0,0,0,0,1,1,1,0},
-  {0,0,0,1,1,1,0,0},
-  {0,0,1,1,1,0,0,0},
+const uint8_t PROGMEM arrowRight[8][9] = {
+  {1,1,0,0,1,1,0,0,0},
+  {0,0,1,0,0,1,1,0,0},
+  {0,0,0,1,0,0,1,1,0},
+  {0,0,0,0,1,0,0,1,1},
+  {0,0,0,1,1,0,0,1,1},
+  {0,0,1,1,0,0,1,1,0},
+  {0,1,1,0,0,1,1,0,0},
+  {1,1,0,0,1,1,0,0,0},
 };
 
-const uint8_t PROGMEM arrowHazard[8][16] = {
-  {0,0,0,1,1,0,0,1,1,0,0,1,1,0,0,0},
-  {0,0,0,1,1,0,0,1,1,0,0,1,1,0,0,0},
-  {0,0,0,1,1,0,0,1,1,0,0,1,1,0,0,0},
-  {0,0,0,1,1,0,0,1,1,0,0,1,1,0,0,0},
-  {0,0,0,1,1,0,0,1,1,0,0,1,1,0,0,0},
-  {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-  {0,0,0,1,1,0,0,1,1,0,0,1,1,0,0,0},
-  {0,0,0,1,1,0,0,1,1,0,0,1,1,0,0,0},
+const uint8_t PROGMEM arrowHazard[8][10] = {
+  {1,1,0,0,1,1,0,0,1,1},
+  {1,1,0,0,1,1,0,0,1,1},
+  {1,1,0,0,1,1,0,0,1,1},
+  {1,1,0,0,1,1,0,0,1,1},
+  {1,1,0,0,1,1,0,0,1,1},
+  {0,0,0,0,0,0,0,0,0,0},
+  {1,1,0,0,1,1,0,0,1,1},
+  {1,1,0,0,1,1,0,0,1,1},
 };
 
 

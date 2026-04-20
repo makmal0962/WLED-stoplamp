@@ -1,0 +1,426 @@
+Processing custom_autoRearLight_d1Mini (board: d1_mini; platform: espressif8266@4.2.1; framework: arduino)
+--------------------------------------------------------------------------------
+Verbose mode can be enabled via `-v, --verbose` option
+*** use existing my_config.h ***
+Installing node packages
+npm ci
+
+added 66 packages, and audited 67 packages in 7s
+
+14 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+npm run build
+
+> wled@16.0.0-beta build
+> node tools/cdata.js
+
+
+	  ##  ##      ##        ######    ######
+	##      ##    ##      ##        ##  ##  ##
+	##  ##  ##  ##        ######        ##  ##
+	##  ##  ##  ##        ##            ##  ##
+	  ##  ##      ######    ######    ######
+		 build script for web UI
+
+Web UI is already built
+CONFIGURATION: https://docs.platformio.org/page/boards/espressif8266/d1_mini.html
+PLATFORM: Espressif 8266 (4.2.1) > WeMos D1 R2 and mini
+HARDWARE: ESP8266 80MHz, 80KB RAM, 4MB Flash
+PACKAGES: 
+ - framework-arduinoespressif8266 @ 3.30102.0 (3.1.2) 
+ - tool-esptool @ 1.413.0 (4.13) 
+ - tool-esptoolpy @ 2.41100.0 (4.11.0) 
+ - toolchain-xtensa @ 2.100300.220621 (10.3.0)
+LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
+LDF Modes: Finder ~ chain, Compatibility ~ strict
+Found 47 compatible libraries
+Scanning dependencies...
+Dependency Graph
+|-- ESPAsyncTCP @ 1.2.2
+|-- ESPAsyncUDP @ 0.0.0-alpha+sha.697c75a025
+|-- ESP8266PWM
+|-- IRremoteESP8266 @ 2.8.2
+|-- NeoPixelBus @ 2.8.4+sha.a0919d1
+|-- ESPAsyncWebServerWLED @ 2.4.2+sha.39b830c
+|-- AsyncMqttClient @ 0.9.0
+|-- QuickEspNow @ 0.8.1+sha.193e991
+|-- AutoRearLight @ 1.0.0
+|-- Wire @ 1.0
+|-- Hash @ 1.0
+|-- ArduinoOTA @ 1.0
+|-- DNSServer @ 1.1.1
+|-- ESP8266mDNS @ 1.2
+|-- ESP8266WiFi @ 1.0
+|-- LittleFS @ 0.1.0
+|-- SPI @ 1.0
+|-- ESP8266WebServer @ 1.0
+Building in release mode
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib839\AutoRearLight\usermod_autoRearLight.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\FX.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\FX_2Dfcn.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\FX_fcn.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\FXparticleSystem.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\alexa.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\bus_manager.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\button.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\cfg.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\colors.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\dmx_input.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\dmx_output.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\e131.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\fontmanager.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\file.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\hue.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\image_loader.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\improv.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\ir.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\json.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\led.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\lx_parser.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\mqtt.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\net_debug.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\network.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\ntp.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\ota_update.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\overlay.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\palettes.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\pin_manager.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\playlist.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\presets.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\remote.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\set.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\src\dependencies\dmx\ESPDMX.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\src\dependencies\dmx\SparkFunDMX.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\src\dependencies\e131\ESPAsyncE131.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\src\dependencies\espalexa\EspalexaDevice.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\src\dependencies\fastled_slim\fastled_slim.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\src\dependencies\network\Network.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\src\dependencies\time\DS1307RTC.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\src\dependencies\time\DateStrings.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\src\dependencies\time\Time.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\src\dependencies\timezone\Timezone.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\udp.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\um_manager.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\usermod.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\util.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\wled.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\wled_main.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\wled_math.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\wled_metadata.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\wled_serial.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\wled_server.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\ws.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\src\xml.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\ld\local.eagle.app.v6.common.ld' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libc70\ESPAsyncTCP\AsyncPrinter.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libc70\ESPAsyncTCP\ESPAsyncTCP.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libc70\ESPAsyncTCP\ESPAsyncTCPbuffer.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libc70\ESPAsyncTCP\SyncClient.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libc70\ESPAsyncTCP\tcp_axtls.c.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libd90\ESPAsyncUDP\AsyncUDP.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libc70\libESPAsyncTCP.a' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libd90\libESPAsyncUDP.a' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libacd\ESP8266PWM\core_esp8266_waveform_phase.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libacd\libESP8266PWM.a' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\IRac.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\IRrecv.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\IRsend.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\IRtext.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\IRtimer.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\IRutils.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Airton.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Airwell.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Aiwa.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Amcor.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Argo.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Arris.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Bose.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Carrier.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Coolix.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Corona.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Daikin.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Delonghi.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Denon.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Dish.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Doshisha.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Ecoclim.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Electra.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_EliteScreens.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Epson.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Fujitsu.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_GICable.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_GlobalCache.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Goodweather.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Gree.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Haier.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Hitachi.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Inax.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_JVC.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Kelon.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Kelvinator.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_LG.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Lasertag.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Lego.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Lutron.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_MWM.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Magiquest.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Metz.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Midea.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_MilesTag2.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Mirage.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Mitsubishi.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_MitsubishiHeavy.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Multibrackets.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_NEC.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Neoclima.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Nikai.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Panasonic.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Pioneer.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Pronto.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_RC5_RC6.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_RCMM.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Rhoss.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Samsung.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Sanyo.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Sharp.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Sherwood.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Sony.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Symphony.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Tcl.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Technibel.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Teco.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Teknopoint.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Toshiba.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Transcold.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Trotec.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Truma.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Vestel.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Voltas.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Whirlpool.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Whynter.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Xmp.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\IRremoteESP8266\ir_Zepeal.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib39e\SPI\SPI.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib39e\libSPI.a' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libda1\libIRremoteESP8266.a' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libcb7\I2S\I2S.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib607\NeoPixelBus@src-857d82d57e345a1cd78ff7409f47ad72\internal\animations\NeoPixelAnimator.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libcb7\libI2S.a' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib607\NeoPixelBus@src-857d82d57e345a1cd78ff7409f47ad72\internal\colors\HsbColor.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib607\NeoPixelBus@src-857d82d57e345a1cd78ff7409f47ad72\internal\colors\HslColor.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib607\NeoPixelBus@src-857d82d57e345a1cd78ff7409f47ad72\internal\colors\HtmlColor.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib607\NeoPixelBus@src-857d82d57e345a1cd78ff7409f47ad72\internal\colors\HtmlColorNameStrings.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib607\NeoPixelBus@src-857d82d57e345a1cd78ff7409f47ad72\internal\colors\HtmlColorShortNames.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib607\NeoPixelBus@src-857d82d57e345a1cd78ff7409f47ad72\internal\colors\HtmlColorNames.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib607\NeoPixelBus@src-857d82d57e345a1cd78ff7409f47ad72\internal\colors\NeoGammaDynamicTableMethod.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib607\NeoPixelBus@src-857d82d57e345a1cd78ff7409f47ad72\internal\colors\NeoGammaTableMethod.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib607\NeoPixelBus@src-857d82d57e345a1cd78ff7409f47ad72\internal\colors\Rgb48Color.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib607\NeoPixelBus@src-857d82d57e345a1cd78ff7409f47ad72\internal\colors\RgbColor.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib607\NeoPixelBus@src-857d82d57e345a1cd78ff7409f47ad72\internal\colors\Rgbw64Color.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib607\NeoPixelBus@src-857d82d57e345a1cd78ff7409f47ad72\internal\colors\RgbColorBase.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib607\NeoPixelBus@src-857d82d57e345a1cd78ff7409f47ad72\internal\colors\Rgbww80Color.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib607\NeoPixelBus@src-857d82d57e345a1cd78ff7409f47ad72\internal\colors\RgbwColor.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib607\NeoPixelBus@src-857d82d57e345a1cd78ff7409f47ad72\internal\colors\RgbwwColor.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib607\NeoPixelBus@src-857d82d57e345a1cd78ff7409f47ad72\internal\colors\SegmentDigit.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib607\NeoPixelBus@src-857d82d57e345a1cd78ff7409f47ad72\internal\colors\RgbwwwColor.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib607\NeoPixelBus@src-857d82d57e345a1cd78ff7409f47ad72\internal\methods\FractionClk.c.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib607\NeoPixelBus@src-857d82d57e345a1cd78ff7409f47ad72\internal\methods\Esp32_i2s.c.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib607\NeoPixelBus@src-857d82d57e345a1cd78ff7409f47ad72\internal\methods\NeoEsp32RmtMethod.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib607\NeoPixelBus@src-857d82d57e345a1cd78ff7409f47ad72\internal\methods\NeoEsp8266I2sMethodCore.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib607\NeoPixelBus@src-857d82d57e345a1cd78ff7409f47ad72\internal\methods\NeoEsp8266UartMethod.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib607\NeoPixelBus@src-857d82d57e345a1cd78ff7409f47ad72\internal\methods\NeoEspBitBangMethod.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib607\NeoPixelBus@src-857d82d57e345a1cd78ff7409f47ad72\internal\methods\NeoPixelAvr.c.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib607\NeoPixelBus@src-857d82d57e345a1cd78ff7409f47ad72\internal\methods\Rp2040\NeoRp2040PioMonoProgram.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib607\libNeoPixelBus@src-857d82d57e345a1cd78ff7409f47ad72.a' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libf50\Hash\Hash.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\liba71\LittleFS\LittleFS.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libf50\libHash.a' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\liba71\LittleFS\lfs_util.c.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\liba71\LittleFS\lfs.c.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\liba71\libLittleFS.a' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libc16\ESP8266WiFi\BearSSLHelpers.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libc16\ESP8266WiFi\CertStoreBearSSL.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libc16\ESP8266WiFi\ESP8266WiFi.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libc16\ESP8266WiFi\ESP8266WiFiAP.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libc16\ESP8266WiFi\ESP8266WiFiGeneric.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libc16\ESP8266WiFi\ESP8266WiFiGratuitous.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libc16\ESP8266WiFi\ESP8266WiFiMulti.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libc16\ESP8266WiFi\ESP8266WiFiSTA-WPS.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libc16\ESP8266WiFi\ESP8266WiFiSTA.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libc16\ESP8266WiFi\ESP8266WiFiScan.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libc16\ESP8266WiFi\WiFiClient.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libc16\ESP8266WiFi\WiFiClientSecureBearSSL.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libc16\ESP8266WiFi\WiFiServer.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libc16\ESP8266WiFi\WiFiServerSecureBearSSL.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libc16\ESP8266WiFi\WiFiUdp.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libc16\ESP8266WiFi\enable_wifi_at_boot_time.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib6e9\ESPAsyncWebServerWLED\AsyncEventSource.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libc16\libESP8266WiFi.a' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib6e9\ESPAsyncWebServerWLED\AsyncWebSocket.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib6e9\ESPAsyncWebServerWLED\ContentTypes.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib6e9\ESPAsyncWebServerWLED\DynamicBuffer.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib6e9\ESPAsyncWebServerWLED\SPIFFSEditor.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib6e9\ESPAsyncWebServerWLED\WebAuthentication.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib6e9\ESPAsyncWebServerWLED\WebHandlers.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib6e9\ESPAsyncWebServerWLED\WebRequest.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib6e9\ESPAsyncWebServerWLED\WebResponses.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib6e9\ESPAsyncWebServerWLED\WebServer.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libe29\AsyncMqttClient\AsyncMqttClient.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\lib6e9\libESPAsyncWebServerWLED.a' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libe29\AsyncMqttClient\AsyncMqttClient\Packets\ConnAckPacket.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libe29\AsyncMqttClient\AsyncMqttClient\Packets\Out\Connect.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libe29\AsyncMqttClient\AsyncMqttClient\Packets\Out\Disconn.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libe29\AsyncMqttClient\AsyncMqttClient\Packets\Out\OutPacket.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libe29\AsyncMqttClient\AsyncMqttClient\Packets\Out\PingReq.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libe29\AsyncMqttClient\AsyncMqttClient\Packets\Out\PubAck.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libe29\AsyncMqttClient\AsyncMqttClient\Packets\Out\Publish.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libe29\AsyncMqttClient\AsyncMqttClient\Packets\Out\Subscribe.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libe29\AsyncMqttClient\AsyncMqttClient\Packets\Out\Unsubscribe.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libe29\AsyncMqttClient\AsyncMqttClient\Packets\PingRespPacket.cpp.o' from cache
+Retrieved `.pio\build\custom_autoRearLight_d1Mini\libe29\AsyncMqttClient\AsyncMqttClient\Packets\PubAckPacket.cpp.o' from cache
+Compiling .pio\build\custom_autoRearLight_d1Mini\libe29\AsyncMqttClient\AsyncMqttClient\Packets\PubCompPacket.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\libe29\AsyncMqttClient\AsyncMqttClient\Packets\PubRecPacket.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\libe29\AsyncMqttClient\AsyncMqttClient\Packets\PubRelPacket.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\libe29\AsyncMqttClient\AsyncMqttClient\Packets\PublishPacket.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\libe29\AsyncMqttClient\AsyncMqttClient\Packets\SubAckPacket.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\libe29\AsyncMqttClient\AsyncMqttClient\Packets\UnsubAckPacket.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\lib365\QuickEspNow\QuickEspNow_esp32.cpp.o
+Archiving .pio\build\custom_autoRearLight_d1Mini\libe29\libAsyncMqttClient.a
+Compiling .pio\build\custom_autoRearLight_d1Mini\lib365\QuickEspNow\QuickEspNow_esp8266.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\lib340\ESP8266mDNS\ESP8266mDNS.cpp.o
+Archiving .pio\build\custom_autoRearLight_d1Mini\lib365\libQuickEspNow.a
+Compiling .pio\build\custom_autoRearLight_d1Mini\lib340\ESP8266mDNS\LEAmDNS.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\lib340\ESP8266mDNS\LEAmDNS_Control.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\lib340\ESP8266mDNS\LEAmDNS_Helpers.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\lib340\ESP8266mDNS\LEAmDNS_Structs.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\lib340\ESP8266mDNS\LEAmDNS_Transfer.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\lib51d\Wire\Wire.cpp.o
+Archiving .pio\build\custom_autoRearLight_d1Mini\lib340\libESP8266mDNS.a
+Compiling .pio\build\custom_autoRearLight_d1Mini\libba1\DNSServer\DNSServer.cpp.o
+Archiving .pio\build\custom_autoRearLight_d1Mini\lib51d\libWire.a
+Compiling .pio\build\custom_autoRearLight_d1Mini\lib858\ArduinoOTA\ArduinoOTA.cpp.o
+Archiving .pio\build\custom_autoRearLight_d1Mini\libba1\libDNSServer.a
+Compiling .pio\build\custom_autoRearLight_d1Mini\lib526\ESP8266WebServer\detail\mimetable.cpp.o
+Archiving .pio\build\custom_autoRearLight_d1Mini\lib526\libESP8266WebServer.a
+Archiving .pio\build\custom_autoRearLight_d1Mini\lib858\libArduinoOTA.a
+Archiving .pio\build\custom_autoRearLight_d1Mini\libFrameworkArduinoVariant.a
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\Crypto.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\Esp-frag.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\Esp-version.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\Esp.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\FS.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\FSnoop.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\FunctionalInterrupt.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\HardwareSerial.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\IPAddress.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\LwipDhcpServer-NonOS.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\LwipDhcpServer.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\LwipIntf.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\LwipIntfCB.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\MD5Builder.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\Print.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\Schedule.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\StackThunk.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\Stream.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\StreamSend.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\Tone.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\TypeConversion.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\Updater.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\WMath.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\WString.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\abi.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\aes_unwrap.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\base64.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\cbuf.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\cont.S.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\cont_util.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\core_esp8266_app_entry_noextra4k.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\core_esp8266_eboot_command.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\core_esp8266_features.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\core_esp8266_flash_quirks.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\core_esp8266_flash_utils.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\core_esp8266_i2s.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\core_esp8266_main.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\core_esp8266_non32xfer.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\core_esp8266_noniso.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\core_esp8266_phy.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\core_esp8266_postmortem.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\core_esp8266_si2c.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\core_esp8266_sigma_delta.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\core_esp8266_spi_utils.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\core_esp8266_timer.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\core_esp8266_vm.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\core_esp8266_waveform_phase.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\core_esp8266_waveform_pwm.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\core_esp8266_wiring.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\core_esp8266_wiring_analog.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\core_esp8266_wiring_digital.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\core_esp8266_wiring_pulse.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\core_esp8266_wiring_pwm.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\core_esp8266_wiring_shift.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\crc32.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\debug.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\exc-c-wrapper-handler.S.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\exc-sethandler.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\flash_hal.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\gdb_hooks.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\heap.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\hwdt_app_entry.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\libb64\cdecode.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\libb64\cencode.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\libc_replacements.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\mmu_iram.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\reboot_uart_dwnld.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\spiffs\spiffs_cache.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\spiffs\spiffs_check.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\spiffs\spiffs_gc.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\spiffs\spiffs_hydrogen.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\spiffs\spiffs_nucleus.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\spiffs_api.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\sqrt32.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\stdlib_noniso.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\time.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\uart.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\umm_malloc\umm_info.c.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\umm_malloc\umm_integrity.c.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\umm_malloc\umm_local.c.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\umm_malloc\umm_malloc.cpp.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\umm_malloc\umm_poison.c.o
+Compiling .pio\build\custom_autoRearLight_d1Mini\FrameworkArduino\wpa2_eap_patch.cpp.o
+Archiving .pio\build\custom_autoRearLight_d1Mini\libFrameworkArduino.a
+Linking .pio\build\custom_autoRearLight_d1Mini\firmware.elf
+Checking linked optional modules (usermods) in map file
+INFO: 1 libraries linked as WLED optional/user modules
+INFO: 1 usermod object entries
+Retrieving maximum program size .pio\build\custom_autoRearLight_d1Mini\firmware.elf
+Checking size .pio\build\custom_autoRearLight_d1Mini\firmware.elf
+Advanced Memory Usage is available via "PlatformIO Home > Project Inspect"
+RAM:   [======    ]  55.4% (used 45348 bytes from 81920 bytes)
+Flash: [========  ]  80.3% (used 838595 bytes from 1044464 bytes)
+Building .pio\build\custom_autoRearLight_d1Mini\firmware.bin
+Creating BIN file ".pio\build\custom_autoRearLight_d1Mini\firmware.bin" using "C:\Users\Mike\.platformio\packages\framework-arduinoespressif8266\bootloaders\eboot\eboot.elf" and ".pio\build\custom_autoRearLight_d1Mini\firmware.elf"
+bin_rename_copy([".pio\build\custom_autoRearLight_d1Mini\firmware.bin"], [".pio\build\custom_autoRearLight_d1Mini\firmware.elf"])
+Copying .pio\build\custom_autoRearLight_d1Mini\firmware.bin to build_output\release\WLED_16.0.0-beta_AutoRearLight_D1Mini.bin
+Creating gzip file build_output\release\WLED_16.0.0-beta_AutoRearLight_D1Mini.bin.gz from build_output\release\WLED_16.0.0-beta_AutoRearLight_D1Mini.bin
+Found linker mapfile C:\Users\Mike\Documents\wled-motorcycle-stoplamp\wled_fork\WLED-stoplamp\.pio\build\custom_autoRearLight_d1Mini\firmware.map
+======================== [SUCCESS] Took 263.51 seconds ========================
+
+Processing custom_autoRearLight_esp32_full (board: esp32dev; platform: https://github.com/tasmota/platform-espressif32/releases/download/2024.06.00/platform-espressif32.zip; framework: arduino)
+--------------------------------------------------------------------------------
+Platform Manager: Installing https://github.com/tasmota/platform-espressif32/releases/download/2024.06.00/platform-espressif32.zip
+Downloading 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Platform Manager: espressif32@2024.6.0 has been installed!
+Tool Manager: Installing https://github.com/tasmota/arduino-esp32/releases/download/2.0.18/framework-arduinoespressif32.zip
+Downloading 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Tool Manager: framework-arduinoespressif32@2.0.18+sha.8ba0dc0 has been installed!
+Tool Manager: Installing espressif/toolchain-xtensa-esp32 @ 8.4.0+2021r2-patch5
+Downloading 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Tool Manager: toolchain-xtensa-esp32@8.4.0+2021r2-patch5 has been installed!
+Tool Manager: Installing https://github.com/tasmota/esptool/releases/download/v4.7.4/esptool.zip
+Downloading 0% 10% 20% 30% 40%
+Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
