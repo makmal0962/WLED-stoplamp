@@ -7,14 +7,13 @@ Created: 2026-03-29
 Last Updated: 2026-04-20
 
 Useful flags in your platformio_override.ini:
--D AUTOREARL_DISABLE_FILE_PATTERNS
--D AUTOREARL_DISABLE_CONFIG
+-D AUTOREARL_DISABLE_FILE_PATTERNS (useful if your board RAM is very tight)
+-D AUTOREARL_DISABLE_CONFIG (useful if your board is bootlooping)
 
-Compile with -D AUTOREARL_DISABLE_FILE_PATTERNS to skip all LittleFS pattern loading.
-Use this flag when debugging bootloops or on RAM-constrained builds (e.g. ESP8266).
-When defined, the usermod always uses the built-in PROGMEM arrow patterns.
-
-Use -D AUTOREARL_DISABLE_CONFIG flag to disable usermod config
+Known issues:
+- Do not use "Transpose" in segment settings. it flips the matrix width and hegiht value in 
+  dimension call which this mod reads them constantly during overlay draw, causing patterns draw in 
+  wrong place (truncated in bottom left matrix).
 */
 
 #include "wled.h"
@@ -27,7 +26,7 @@ Use -D AUTOREARL_DISABLE_CONFIG flag to disable usermod config
 #endif
 
 #ifdef ARDUINO_ARCH_ESP8266
-  #warning "AutoRearLight: You are using ESP8266! Don't DM me if your board (or YOU) crashes in the middle of the road!"
+  #warning "AutoRearLight: You are using ESP8266! Do NOT DM me if your board (or YOU) crashes in the middle of the road! Use ESP32!"
 #endif
 
 // Macro to get the column count (width) of a 2D array
@@ -461,15 +460,6 @@ class AutoRearLightUsermod : public Usermod {
       else if (right)         signalState = SIG_RIGHT;
     }
 
-    // Hazard-off detection: track last time both signals were HIGH together.
-    // Clear hazard state only after both go LOW for longer than the detect window.
-    // This handles relay contacts that don't drop at exactly the same time.
-    if (left && right) lastBothTime = now;
-    if (signalState == SIG_HAZARD && !left && !right && (now - lastBothTime > hazardDetectMs)) {
-      signalState      = SIG_NONE;
-      hazardWindowOpen = false;
-    }
-
     // ===== FALLING EDGE + RETURN TO IDLE =====
     // Record when both signals drop. After tailReturnMs, clear all signal state.
     if ((lastLeft || lastRight) && !(left || right)) signalFellTime = now;
@@ -525,7 +515,6 @@ class AutoRearLightUsermod : public Usermod {
 
     // Global brightness cap: clamp to 50% (128/255) while in TAIL state.
     // This prevents headlights from washing out the overlay.
-    if (currentState == TAIL && bri > 128) bri = 128;
 
     bool is1D         = (matrixHeight <= 1);
     unsigned long now = millis();
@@ -693,11 +682,8 @@ class AutoRearLightUsermod : public Usermod {
           pattern = &arrowHazard[0][0]; patternW = ARRAY_W(arrowHazard); patternH = ARRAY_H(arrowHazard);
           isProgmem = true;
         }
-        // offsetX = centerOffsetX(patternW); // Dead center horizontally, safe against underflow
-        // Exclusive offset for hazard
-        // must be dead center!
-        offsetX = (matrixWidth - patternW) / 2;
-        offsetY = (matrixHeight - patternH) / 2;
+        offsetX = centerOffsetX(patternW); // Dead center, safe against underflow
+        offsetY = min((int)centerOffsetY(patternH), max(0, (int)matrixHeight - (int)patternH));
 
         break;
 
@@ -710,7 +696,7 @@ class AutoRearLightUsermod : public Usermod {
           isProgmem = true;
         }
         offsetX = 0; // Left-aligned
-        offsetY = centerOffsetY(patternH);
+        offsetY = min((int)centerOffsetY(patternH), max(0, (int)matrixHeight - (int)patternH));
 
         break;
 
@@ -723,7 +709,7 @@ class AutoRearLightUsermod : public Usermod {
           isProgmem = true;
         }
         offsetX = (int)matrixWidth - (int)patternW; // Right-aligned
-        offsetY = centerOffsetY(patternH);
+        offsetY = min((int)centerOffsetY(patternH), max(0, (int)matrixHeight - (int)patternH));
 
         break;
 
@@ -734,8 +720,6 @@ class AutoRearLightUsermod : public Usermod {
 
 
     // ===== WIPE REQUEST HANDLING =====
-    // All wipe init happens here — patternW is now known.
-
     // Signal change mid-animation → reset wipe to avoid glitch
     if (signalState != prevSignalState) {
       wipeColumn     = 0;
@@ -744,35 +728,30 @@ class AutoRearLightUsermod : public Usermod {
       requestWipeOut = false;
     }
 
-    // Consume wipe intent from loop()
+    // Consume wipe intent from loop() BEFORE animation step and draw range calc
     if (requestWipeIn) {
-      wipeColumn    = 0;
-      wipeState     = WIPE_IN;
-      requestWipeIn = false;
+      wipeColumn      = 0;
+      wipeState       = WIPE_IN;
+      wipeStartTime   = now;
+      requestWipeIn   = false;
     }
-    if (requestWipeOut) {
+    if (requestWipeOut && !holdOnOff) {
       wipeState      = WIPE_OUT;
       wipeColumn     = (wipeOutMode == 0) ? patternW : 0;
       requestWipeOut = false;
+    } else {
+      requestWipeOut = false; // discard if holdOnOff
     }
 
     prevSignalState = signalState;
 
     // ===== HAZARD: FULL FRAME, NO WIPE =====
-    // Hazard blink is driven by the raw signal (hard blink), not the wipe system.
     if (signalState == SIG_HAZARD) {
       if (signalActive) drawFull(pattern, patternW, patternH, offsetX, offsetY, r, g, b, isProgmem);
       return;
     }
 
-    // ===== WIPE ANIMATION =====
-    // wipeColumn: 0 = fully hidden, patternW = fully visible.
-    //
-    // WIPE_IN:  wipeColumn increments until patternW
-    // WIPE_OUT modes:
-    //   0 = reverse (shrink inward): wipeColumn decrements to 0
-    //   1 = forward (push out):      wipeColumn increments to patternW, draw window shifts
-    //   2 = hard blank:              immediately completes, draws nothing
+    // ===== WIPE ANIMATION STEP =====
     if (wipeState == WIPE_IN && now == wipeStartTime) {
     } // delay 1 frame before wipe in
     else if (now - lastWipeStep >= wipeSpeedMs) {
@@ -789,7 +768,7 @@ class AutoRearLightUsermod : public Usermod {
           } else if (wipeOutMode == 1) {
             if (wipeColumn < patternW) wipeColumn++;
             else wipeState = WIPE_IDLE;
-          } else { // mode 2: hard blank
+          } else {
             wipeColumn = patternW;
             wipeState  = WIPE_IDLE;
           }
@@ -800,29 +779,26 @@ class AutoRearLightUsermod : public Usermod {
     if (wipeColumn > patternW) wipeColumn = patternW;
 
     // ===== DRAW RANGE CALCULATION =====
-    // drawStart..drawEnd defines which columns of the pattern to draw this frame.
     uint16_t drawStart = 0;
     uint16_t drawEnd   = wipeColumn;
 
     if (wipeState == WIPE_OUT) {
       if (wipeOutMode == 1) {
-        // Forward push: remaining visible window shifts right as wipeColumn advances
         drawStart = wipeColumn;
         drawEnd   = patternW;
       } else if (wipeOutMode == 2) {
-        drawStart = drawEnd = 0; // Draw nothing
+        drawStart = drawEnd = 0;
       }
-      // mode 0: drawEnd = wipeColumn (shrinking range), drawStart stays 0
     }
 
     // ===== DRAW WIPE =====
-    // Left turn: wipe outward from the inner edge (columns drawn right→left).
-    // Right turn: wipe outward from the inner edge (columns drawn left→right).
-    for (uint16_t i = drawStart; i < drawEnd; i++) {
-      int col = (signalState == SIG_LEFT) ? ((int)patternW - 1) - (int)i : (int)i;
-      drawColumn(pattern, patternW, patternH, col, offsetX, offsetY, r, g, b, isProgmem);
-    }
-  }
+    // Suppress draw only when idle after a completed wipe-out (fully hidden state)
+    if (!(wipeState == WIPE_IDLE && wipeColumn == patternW)) {
+      for (uint16_t i = drawStart; i < drawEnd; i++) {
+        int col = (signalState == SIG_LEFT) ? ((int)patternW - 1) - (int)i : (int)i;
+        drawColumn(pattern, patternW, patternH, col, offsetX, offsetY, r, g, b, isProgmem);
+      }
+    }  }
 
   void connected() override {}
 
@@ -974,11 +950,15 @@ class AutoRearLightUsermod : public Usermod {
     matArr.add(matrixHeight);
 
     JsonArray patArr = user.createNestedArray("Patterns");
-#ifdef AUTOREARL_DISABLE_FILE_PATTERNS
+    #ifdef AUTOREARL_DISABLE_FILE_PATTERNS
     patArr.add("disabled (AUTOREARL_DISABLE_FILE_PATTERNS)");
-#else
+    #else
     patArr.add(patternsLoaded ? patternFile : "defaults");
-#endif // AUTOREARL_DISABLE_FILE_PATTERNS
+    #endif // AUTOREARL_DISABLE_FILE_PATTERNS
+    
+    JsonArray dbg = user.createNestedArray("SegDim");
+    dbg.add(strip.getMainSegment().virtualWidth());
+    dbg.add(strip.getMainSegment().virtualHeight());
   }
 };
 
