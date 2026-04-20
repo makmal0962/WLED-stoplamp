@@ -191,6 +191,7 @@ class AutoRearLightUsermod : public Usermod {
   bool          holdOnOff        = false; // If true, keep turn overlay visible during blink-off phase
   uint8_t       overlayBrightness = 255;
   uint8_t       wipeOutMode      = 1;    // 0 = reverse (shrink), 1 = forward (push out), 2 = hard blank
+  unsigned long wipeStartTime    = 0;
 
   // ===== 1D CONFIG =====
   // Number of pixels used for turn signal and hazard display on a 1D strip.
@@ -471,7 +472,8 @@ class AutoRearLightUsermod : public Usermod {
 
     // ===== FALLING EDGE + RETURN TO IDLE =====
     // Record when both signals drop. After tailReturnMs, clear all signal state.
-    if (!left && !right && (lastLeft || lastRight)) signalFellTime = now;
+    if ((lastLeft || lastRight) && !(left || right)) signalFellTime = now;
+    
     if (!left && !right && (now - signalFellTime >= tailReturnMs)) {
       signalState      = SIG_NONE;
       hazardWindowOpen = false;
@@ -605,6 +607,7 @@ class AutoRearLightUsermod : public Usermod {
           if (requestWipeIn) {
             wipeColumn    = 0;
             wipeState     = WIPE_IN;
+            wipeStartTime = now; // start 1 frame delay
             requestWipeIn = false;
           }
           if (requestWipeOut) {
@@ -614,7 +617,9 @@ class AutoRearLightUsermod : public Usermod {
           }
 
           // Advance wipe animation
-          if (now - lastWipeStep >= wipeSpeedMs) {
+          if (wipeState == WIPE_IN && now == wipeStartTime) {
+          } // delay 1 frame before wipe in
+          else if (now - lastWipeStep >= wipeSpeedMs) {
             lastWipeStep = now;
             switch (wipeState) {
               case WIPE_IN:
@@ -678,6 +683,7 @@ class AutoRearLightUsermod : public Usermod {
     // Use file-loaded pattern if available AND pointer is non-null.
     // Null check is critical: malloc may have failed silently on low-RAM devices.
     // A null pattern pointer always falls back to PROGMEM.
+    int offsetY;
     switch (signalState) {
       case SIG_HAZARD:
         if (patternsLoaded && patternHazard) {
@@ -687,7 +693,12 @@ class AutoRearLightUsermod : public Usermod {
           pattern = &arrowHazard[0][0]; patternW = ARRAY_W(arrowHazard); patternH = ARRAY_H(arrowHazard);
           isProgmem = true;
         }
-        offsetX = centerOffsetX(patternW); // Dead center horizontally, safe against underflow
+        // offsetX = centerOffsetX(patternW); // Dead center horizontally, safe against underflow
+        // Exclusive offset for hazard
+        // must be dead center!
+        offsetX = (matrixWidth - patternW) / 2;
+        offsetY = (matrixHeight - patternH) / 2;
+
         break;
 
       case SIG_LEFT:
@@ -699,6 +710,8 @@ class AutoRearLightUsermod : public Usermod {
           isProgmem = true;
         }
         offsetX = 0; // Left-aligned
+        offsetY = centerOffsetY(patternH);
+
         break;
 
       case SIG_RIGHT:
@@ -710,6 +723,8 @@ class AutoRearLightUsermod : public Usermod {
           isProgmem = true;
         }
         offsetX = (int)matrixWidth - (int)patternW; // Right-aligned
+        offsetY = centerOffsetY(patternH);
+
         break;
 
       default:
@@ -717,7 +732,6 @@ class AutoRearLightUsermod : public Usermod {
         return; // SIG_NONE — should not reach here
     }
 
-    int offsetY = centerOffsetY(patternH); // Vertically centered for all patterns
 
     // ===== WIPE REQUEST HANDLING =====
     // All wipe init happens here — patternW is now known.
@@ -759,7 +773,9 @@ class AutoRearLightUsermod : public Usermod {
     //   0 = reverse (shrink inward): wipeColumn decrements to 0
     //   1 = forward (push out):      wipeColumn increments to patternW, draw window shifts
     //   2 = hard blank:              immediately completes, draws nothing
-    if (now - lastWipeStep >= wipeSpeedMs) {
+    if (wipeState == WIPE_IN && now == wipeStartTime) {
+    } // delay 1 frame before wipe in
+    else if (now - lastWipeStep >= wipeSpeedMs) {
       lastWipeStep = now;
       switch (wipeState) {
         case WIPE_IN:
