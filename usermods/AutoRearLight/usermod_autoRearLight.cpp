@@ -29,14 +29,11 @@ Known issues:
   #warning "AutoRearLight: You are using ESP8266! Do NOT DM me if your board (or YOU) crashes in the middle of the road! Use ESP32!"
 #endif
 
-// Macro to get the column count (width) of a 2D array
-#define ARRAY_W(arr) (sizeof(arr[0]) / sizeof(arr[0][0]))
-// Macro to get the row count (height) of a 2D array
-#define ARRAY_H(arr) (sizeof(arr)    / sizeof(arr[0]))
+#define ARRAY_W(arr) (sizeof(arr[0]) / sizeof(arr[0][0])) // column count of 2D array
+#define ARRAY_H(arr) (sizeof(arr)    / sizeof(arr[0]))     // row count of 2D array
 
-// ===== BUILT-IN PIXEL ART PATTERNS (PROGMEM) =====
-// Fallback patterns used when no file is loaded from LittleFS.
-// Each cell: 0 = off, 1 = on. Rows = Y, Columns = X.
+// ===== BUILT-IN PATTERNS (PROGMEM) =====
+// Fallback when no LittleFS file is loaded. 0 = off, 1 = on. [row][col]
 
 const uint8_t PROGMEM arrowLeft[9][10] = {
   {0,0,0,0,1,1,0,0,1,1},
@@ -79,32 +76,28 @@ class AutoRearLightUsermod : public Usermod {
 
   // ===== STATE ENUMS =====
 
-  // Main operating state, driven by the headlamp input.
-  // Designed for motorcycle use. Extend here for future modes.
   enum State {
-    IDLE, // Headlamp off — full brightness, idle preset
-    TAIL, // Headlamp on  — brightness capped at 50%, tail preset
+    IDLE, // headlamp off — full brightness
+    TAIL, // headlamp on  — capped at 50%
   };
 
-  // Active turn signal classification.
-  // Mutually exclusive — eliminates impossible bool combinations.
+  // Mutually exclusive — eliminates impossible bool combos.
   enum SignalState {
-    SIG_NONE,   // No signal active
-    SIG_LEFT,   // Left turn signal committed
-    SIG_RIGHT,  // Right turn signal committed
-    SIG_HAZARD, // Both signals committed as hazard
+    SIG_NONE,
+    SIG_LEFT,
+    SIG_RIGHT,
+    SIG_HAZARD,
   };
 
-  // Wipe animation state.
-  // Owned entirely by handleOverlayDraw(); loop() only sets intent flags.
+  // Owned by handleOverlayDraw(); loop() only sets intent flags.
   enum WipeState {
-    WIPE_IDLE, // No animation running
-    WIPE_IN,   // Pattern is revealing column by column
-    WIPE_OUT,  // Pattern is hiding column by column
+    WIPE_IDLE,
+    WIPE_IN,
+    WIPE_OUT,
   };
 
   // ===== HARDWARE PIN CONFIG =====
-  // Default pins per platform. All overridable via WLED config UI.
+  // Overridable via WLED config UI.
   #ifdef ARDUINO_ARCH_ESP32
     int8_t pinHeadlamp = 18;
     int8_t pinBrake    = 19;
@@ -118,25 +111,22 @@ class AutoRearLightUsermod : public Usermod {
   #endif
 
   // ===== PRESET IDs =====
-  // WLED preset to apply on each state transition.
   uint8_t presetIdle = 1;
   uint8_t presetTail = 2;
 
   // ===== TIMING CONFIG =====
-  uint16_t debounceMs     = 50;  // Input debounce window (ms)
-  uint16_t tailReturnMs   = 500; // Delay before clearing signal state after signals go low (ms)
-  uint16_t hazardDetectMs = 50;  // Window to detect simultaneous left+right as hazard (ms)
-  uint16_t brakeFlashMs   = 25;  // Brake flash toggle interval (ms)
-  uint16_t wipeSpeedMs    = 10;  // Wipe animation step interval (ms per column)
+  uint16_t debounceMs     = 50;  // ms
+  uint16_t tailReturnMs   = 500; // delay after signals fall before clearing state
+  uint16_t hazardDetectMs = 50;  // window to detect simultaneous left+right
+  uint16_t brakeFlashMs   = 25;  // ms per flash toggle
+  uint16_t wipeSpeedMs    = 10;  // ms per column step
 
   // ===== MATRIX DIMENSIONS =====
-  // Fetched dynamically every frame in handleOverlayDraw() to support
-  // live segment resizing and prevent premature access during boot.
+  // Fetched every frame in handleOverlayDraw() — safe against live resizing and boot ordering.
   uint16_t matrixWidth  = 0;
   uint16_t matrixHeight = 0;
 
   // ===== DEBOUNCE STATE =====
-  // Each input pin has its own raw/debounced state and timestamp.
   bool debBrake      = false;
   bool rawBrakeDB    = false;
   unsigned long debBrakeTime = 0;
@@ -145,7 +135,7 @@ class AutoRearLightUsermod : public Usermod {
   bool rawHeadlampDB = false;
   unsigned long debHeadlampTime = 0;
 
-  // Turn signals are already clean from the relay, but debounce is kept for safety.
+  // Relay output is clean, but debounced for safety.
   bool debLeft    = false;
   bool rawLeftDB  = false;
   unsigned long debLeftTime = 0;
@@ -155,50 +145,46 @@ class AutoRearLightUsermod : public Usermod {
   unsigned long debRightTime = 0;
 
   // ===== SIGNAL TRACKING =====
-  // Last committed (debounced) pin values, used by handleOverlayDraw().
   bool lastLeft  = false;
   bool lastRight = false;
   bool lastBrake = false;
   bool lastHead  = false;
 
-  unsigned long signalFellTime  = 0; // Timestamp of the last falling edge on both turn signals
-  unsigned long signalStartTime = 0; // Timestamp of rising edge, used for hazard detection window
-  unsigned long lastBothTime    = 0; // Last time both left+right were HIGH simultaneously
+  unsigned long signalFellTime  = 0; // falling edge timestamp (both signals)
+  unsigned long signalStartTime = 0; // rising edge timestamp (hazard window)
+  unsigned long lastBothTime    = 0; // last time both left+right were HIGH
 
-  // True while waiting for hazardDetectMs to elapse after a rising edge.
-  // Cleared once the signal type is committed to signalState.
-  bool hazardWindowOpen = false;
+  bool hazardWindowOpen = false; // waiting for hazardDetectMs to classify signal
 
-  bool prevBlink = false; // Previous frame's blink state, for edge detection
+  bool prevBlink = false; // previous blink state for edge detection
   bool enabled   = true;
 
   // ===== ACTIVE STATES =====
   State       currentState    = IDLE;
   SignalState signalState     = SIG_NONE;
-  SignalState prevSignalState = SIG_NONE; // For detecting signal change mid-animation
+  SignalState prevSignalState = SIG_NONE; // signal change detection
   WipeState   wipeState       = WIPE_IDLE;
-  WipeState   prevWipeState   = WIPE_IDLE; // For detecting wipe-out transition in draw
+  WipeState   prevWipeState   = WIPE_IDLE;
 
   // ===== WIPE INTENT FLAGS =====
-  // Set by loop(), consumed by handleOverlayDraw() which has access to patternW/1D size.
+  // Set by loop(), consumed by handleOverlayDraw() which knows patternW/turnLen.
   bool requestWipeIn  = false;
   bool requestWipeOut = false;
 
   // ===== OVERLAY STATE =====
   bool          brakeFlashState  = false;
   unsigned long lastBrakeFlash   = 0;
-  uint16_t      wipeColumn       = 0;     // Current wipe progress (columns for 2D, pixels for 1D)
+  uint16_t      wipeColumn       = 0;     // 0 = blank sentinel, patternW = fully shown
   unsigned long lastWipeStep     = 0;
-  bool          holdOnOff        = false; // If true, keep turn overlay visible during blink-off phase
+  bool          holdOnOff        = false; // keep overlay visible during blink-off phase
   uint8_t       overlayBrightness = 255;
-  uint8_t       wipeOutMode      = 1;    // 0 = reverse (shrink), 1 = forward (push out), 2 = hard blank
+  uint8_t       wipeOutMode      = 1;    // 0 = reverse, 1 = forward push, 2 = hard blank
   unsigned long wipeStartTime    = 0;
 
   // ===== 1D CONFIG =====
-  // Number of pixels used for turn signal and hazard display on a 1D strip.
   // Clamped to total strip length at draw time.
-  uint16_t strip1DTurnLen   = 8; // Pixels lit per side for turn signal
-  uint16_t strip1DHazardLen = 8; // Pixels lit for hazard (centered)
+  uint16_t strip1DTurnLen   = 8; // px per side
+  uint16_t strip1DHazardLen = 8; // px centered
 
   // ===== OVERLAY COLORS =====
   uint8_t bgR = 40, bgG = 0, bgB = 0;               // Background (dark red default)
@@ -206,18 +192,13 @@ class AutoRearLightUsermod : public Usermod {
   uint8_t hazardR = 255, hazardG = 165, hazardB = 0; // Hazard color (amber)
 
   // ===== PATTERN FILE =====
-  // Path to a LittleFS text file containing custom pixel art patterns.
-  // Reloaded deferred via needLoadPatterns flag — never loaded during setup() or readFromConfig()
-  // to avoid filesystem-not-ready crashes on ESP8266.
-  // Compile with -D AUTOREARL_DISABLE_FILE_PATTERNS to disable all file loading entirely.
+  // Loaded deferred via loop() — never during setup()/readFromConfig() (LittleFS not ready).
   char patternFile[32] = "/autoRearLight.txt";
   char currentFile[32] = "";
-  bool needLoadPatterns = false; // Set by readFromConfig(); consumed safely in loop()
+  bool needLoadPatterns = false; // set by readFromConfig(), consumed in loop()
 
   // ===== DYNAMIC PATTERN BUFFERS =====
-  // Loaded from LittleFS, or null if file loading is disabled/failed.
-  // All pointers are null-checked before use — a null pointer always falls back to PROGMEM.
-  // This prevents crashes from partial malloc failures on low-RAM devices.
+  // null = load failed or disabled; always falls back to PROGMEM.
   uint8_t* patternLeft   = nullptr; uint16_t patternLeftW   = 8,  patternLeftH   = 8;
   uint8_t* patternRight  = nullptr; uint16_t patternRightW  = 8,  patternRightH  = 8;
   uint8_t* patternHazard = nullptr; uint16_t patternHazardW = 16, patternHazardH = 8;
@@ -229,21 +210,17 @@ class AutoRearLightUsermod : public Usermod {
     return digitalRead(pin) == HIGH;
   }
 
-  // Returns the Y offset to vertically center a pattern on the matrix.
-  // Returns 0 if the pattern is taller than or equal to the matrix.
+  // Returns 0 if pattern >= matrix dimension.
   int centerOffsetY(uint16_t patternH) {
     return (matrixHeight > patternH) ? (int)(matrixHeight - patternH) / 2 : 0;
   }
 
-  // Returns the X offset to horizontally center a pattern on the matrix.
-  // Returns 0 if the pattern is wider than or equal to the matrix.
   int centerOffsetX(uint16_t patternW) {
     return (matrixWidth > patternW) ? (int)(matrixWidth - patternW) / 2 : 0;
   }
 
   // ===== BRIGHTNESS CONTROL =====
-  // Scales RGB values by overlayBrightness.
-  // When in TAIL state, brightness is additionally capped at 128 (50%).
+  // Caps at 50% in TAIL state.
   void applyBrightness(uint8_t &r, uint8_t &g, uint8_t &b) {
     uint8_t eff = overlayBrightness;
     if (currentState == TAIL && eff > 128) eff = 128;
@@ -263,15 +240,9 @@ class AutoRearLightUsermod : public Usermod {
   }
 
 #ifndef AUTOREARL_DISABLE_FILE_PATTERNS
-  // Parses a simple text file from LittleFS into pixel art pattern buffers.
-  // File format:
-  //   # left / # right / # hazard  → section header
-  //   8x8                          → optional dimension hint (skipped)
-  //   01100110                     → pixel row: '1' = on, anything else = off
-  // Max 32 rows and 64 columns per pattern.
-  //
-  // Safe to call only after WLED has fully initialized (i.e. from loop(), not setup()).
-  // If any malloc fails, all buffers are freed and patternsLoaded stays false.
+  // File format: # left/right/hazard → section header, 8x8 → skipped, 01100110 → pixel row.
+  // Max 32 rows × 64 cols per pattern. Call only from loop() — LittleFS must be ready.
+  // On any malloc failure, all buffers freed and patternsLoaded stays false.
   void loadPatterns() {
     freePatterns();
 
@@ -285,13 +256,11 @@ class AutoRearLightUsermod : public Usermod {
     uint16_t detectedW = 0;
     uint16_t rowCount  = 0;
 
-    // Temporary row buffer: max 32 rows × 64 columns = 2048 bytes
-    // On ESP8266, this may fail if heap is fragmented — handled gracefully below.
+    // 32 rows × 64 cols temp buffer; may fail on fragmented ESP8266 heap.
     uint8_t (*tmp)[64] = (uint8_t(*)[64]) malloc(32 * 64);
-    if (!tmp) { f.close(); return; } // malloc failed — silently fall back to PROGMEM
+    if (!tmp) { f.close(); return; } // fall back to PROGMEM silently
 
-    // Flush accumulated rows into the target pattern buffer.
-    // On malloc failure, frees all buffers so we never have a partial/corrupt state.
+    // Flush accumulated rows into target buffer; abort all on malloc failure.
     auto commitPattern = [&]() {
       if (!target || rowCount == 0 || detectedW == 0) return;
       *targetW = detectedW;
@@ -299,8 +268,7 @@ class AutoRearLightUsermod : public Usermod {
       size_t sz = detectedW * rowCount;
       *target = (uint8_t*)malloc(sz);
       if (!*target) {
-        // malloc failed for this pattern — free everything and abort
-        free(tmp); tmp = nullptr;
+        free(tmp); tmp = nullptr; // abort — never leave partial state
         freePatterns();
         return;
       }
@@ -309,13 +277,13 @@ class AutoRearLightUsermod : public Usermod {
     };
 
     while (f.available()) {
-      if (!tmp) break; // Aborted due to malloc failure
+      if (!tmp) break; // malloc failed upstream
 
       String line = f.readStringUntil('\n');
       line.trim();
       if (line.length() == 0) continue;
 
-      // Section header: commit previous pattern and select new target buffer
+      // Section header — commit previous and switch target
       if (line.startsWith("#")) {
         commitPattern();
         rowCount = 0; detectedW = 0;
@@ -326,7 +294,7 @@ class AutoRearLightUsermod : public Usermod {
         continue;
       }
 
-      // Skip optional dimension hint lines (e.g. "8x8", "16x8")
+      // Skip dimension hint lines e.g. "8x8"
       if (line.indexOf('x') >= 0 && line.length() <= 6) continue;
 
       if (!target || rowCount >= 32) continue;
@@ -338,23 +306,19 @@ class AutoRearLightUsermod : public Usermod {
     }
 
     if (tmp) {
-      commitPattern(); // Flush the last section
+      commitPattern(); // flush last section
       free(tmp);
       patternsLoaded = (patternLeft != nullptr || patternRight != nullptr || patternHazard != nullptr);
     }
     f.close();
   }
 #else
-  // File pattern loading is disabled at compile time.
-  // Always uses built-in PROGMEM patterns.
-  void loadPatterns() {}
+  void loadPatterns() {} // file loading disabled at compile time
 #endif
 
   // ===== 2D DRAW HELPERS =====
-  // Both functions use row-major indexing: idx = y * patternW + x.
-  // Bounds-checked against the matrix before writing to the strip.
+  // Row-major: idx = y * patternW + x. Bounds-checked against matrix.
 
-  // Draws a single column of a pattern at a given pixel coordinate.
   void drawColumn(const uint8_t* pattern,
                   uint16_t patternW, uint16_t patternH,
                   int col, int offsetX, int offsetY,
@@ -373,7 +337,7 @@ class AutoRearLightUsermod : public Usermod {
     }
   }
 
-  // Draws all columns of a pattern (full frame, used for hazard blink).
+  // Full frame draw — used for hazard blink and wipe-in hold.
   void drawFull(const uint8_t* pattern,
                 uint16_t patternW, uint16_t patternH,
                 int offsetX, int offsetY,
@@ -397,26 +361,19 @@ class AutoRearLightUsermod : public Usermod {
   AutoRearLightUsermod() {}
 
   void setup() override {
-    signalFellTime = millis() - tailReturnMs; // Prevent false trigger on first loop
+    signalFellTime = millis() - tailReturnMs; // prevent false trigger on boot
 
     pinMode(pinHeadlamp, INPUT);
     pinMode(pinBrake,    INPUT);
     pinMode(pinLeft,     INPUT);
     pinMode(pinRight,    INPUT);
 
-    // Matrix dimensions are fetched dynamically in handleOverlayDraw().
-    // Do NOT call strip.getMainSegment() here — WLED strip may not be ready yet.
-
-    // Do NOT call loadPatterns() here — LittleFS is not mounted yet during setup().
-    // Pattern loading is deferred to loop() via needLoadPatterns flag.
-    // Initial load is triggered by readFromConfig() setting needLoadPatterns = true.
+    // strip and LittleFS not ready here — both deferred to loop()
   }
 
   void loop() override {
 #ifndef AUTOREARL_DISABLE_FILE_PATTERNS
-    // Deferred pattern load: safe to call here because WLED and LittleFS are fully
-    // initialized by the time loop() runs. Never load during setup() or readFromConfig().
-    if (needLoadPatterns) {
+    if (needLoadPatterns) { // LittleFS ready by loop() — safe to load now
       loadPatterns();
       needLoadPatterns = false;
     }
@@ -426,7 +383,6 @@ class AutoRearLightUsermod : public Usermod {
     unsigned long now = millis();
 
     // ===== INPUT DEBOUNCE =====
-    // Each pin is debounced independently using the same debounceMs window.
 
     bool rawHeadlampRead = readPin(pinHeadlamp);
     if (rawHeadlampRead != rawHeadlampDB) { rawHeadlampDB = rawHeadlampRead; debHeadlampTime = now; }
@@ -449,8 +405,7 @@ class AutoRearLightUsermod : public Usermod {
     bool right = debRight;
 
     // ===== HAZARD DETECTION =====
-    // On rising edge of either signal, open the detection window.
-    // After hazardDetectMs elapses, classify and commit to signalState.
+    // Rising edge opens window; classify after hazardDetectMs elapses.
     if ((left || right) && !lastLeft && !lastRight) {
       signalStartTime  = now;
       hazardWindowOpen = true;
@@ -462,20 +417,16 @@ class AutoRearLightUsermod : public Usermod {
       else if (right)         signalState = SIG_RIGHT;
     }
 
-    // ===== FALLING EDGE + RETURN TO IDLE =====
-    // Record when both signals drop. After tailReturnMs, clear all signal state.
+    // ===== FALLING EDGE =====
     if ((lastLeft || lastRight) && !(left || right)) signalFellTime = now;
-    
+
     if (!left && !right && (now - signalFellTime >= tailReturnMs)) {
       signalState      = SIG_NONE;
       hazardWindowOpen = false;
     }
 
     // ===== STATE MACHINE =====
-    // IDLE: headlamp off. TAIL: headlamp on.
-    // Preset is applied once on each transition.
-    // Guard: skip applyPreset during the first 3 seconds of boot to let WLED
-    // finish initializing before we switch presets.
+    // Preset skipped during first 3s of boot — WLED not fully ready.
     State newState = head ? TAIL : IDLE;
     if (newState != currentState) {
       currentState = newState;
@@ -485,13 +436,12 @@ class AutoRearLightUsermod : public Usermod {
     }
 
     // ===== WIPE INTENT =====
-    // loop() only sets intent flags. handleOverlayDraw() consumes them
-    // with access to the actual pattern size (patternW / 1D pixel count).
+    // Flags consumed by handleOverlayDraw() which knows patternW/turnLen.
     bool blinkNow  = (left || right);
     bool blinkRise = blinkNow && !prevBlink;
     bool blinkFall = !blinkNow && prevBlink;
 
-    if (blinkRise)                requestWipeIn  = true;
+    if (blinkRise)               requestWipeIn  = true;
     if (blinkFall && !holdOnOff) requestWipeOut = true;
 
     prevBlink = blinkNow;
@@ -503,30 +453,21 @@ class AutoRearLightUsermod : public Usermod {
   }
 
   // ===== OVERLAY DRAW =====
-  // Called every frame by WLED after the base effect is rendered.
-  // Supports both 1D (linear strip) and 2D (matrix) configurations.
   void handleOverlayDraw() override {
     if (strip.getLengthTotal() == 0 ) return;
-    // Fetch matrix dimensions dynamically every frame.
-    // This guarantees safety across live segment resizing and avoids
-    // calling strip methods before WLED is fully initialized.
+    // Fetched every frame — safe against live resizing and boot ordering.
     matrixWidth  = strip.getMainSegment().virtualWidth();
     matrixHeight = strip.getMainSegment().virtualHeight();
 
     if (!enabled || matrixWidth <= 1) return;
 
-    // Global brightness cap: clamp to 50% (128/255) while in TAIL state.
-    // This prevents headlights from washing out the overlay.
-
     bool is1D         = (matrixHeight <= 1);
     unsigned long now = millis();
     bool brake        = lastBrake;
-    bool signalActive = (lastLeft || lastRight); // Raw blink state for hazard hard-blink
+    bool signalActive = (lastLeft || lastRight); // raw blink — drives hazard hard-blink
     bool anySignal    = (signalState != SIG_NONE);
 
     // ===== BACKGROUND FILL =====
-    // Paint the entire strip with the background color when any overlay is active.
-    // This ensures the base WLED effect is fully covered by the overlay.
     uint8_t br = bgR, bgg = bgG, bb = bgB;
     applyBrightness(br, bgg, bb);
     if (brake || anySignal) {
@@ -535,10 +476,8 @@ class AutoRearLightUsermod : public Usermod {
     }
 
     // ===== BRAKE FLASH =====
-    // Full-strip red flash at brakeFlashMs interval.
-    // During flash-off phase, strip goes fully black (overrides background).
-    // brakeFlashState is reset when brake is released so the next press
-    // always starts on the bright phase.
+    // Flash-off phase goes full black, overriding background.
+    // Reset on release so next press always starts bright.
     if (brake) {
       if (now - lastBrakeFlash >= brakeFlashMs) {
         brakeFlashState = !brakeFlashState;
@@ -554,20 +493,16 @@ class AutoRearLightUsermod : public Usermod {
           strip.setPixelColor(i, RGBW32(0, 0, 0, 0));
       }
     } else {
-      brakeFlashState = false; // Reset so next brake press starts bright
+      brakeFlashState = false; // next press starts on bright phase
     }
 
     // ===== 1D PATH =====
-    // Linear strip behavior — no matrix coordinate system.
-    // Turn wipe uses strip1DTurnLen pixels from the outer edge inward.
-    // Hazard uses strip1DHazardLen pixels centered on the strip.
-    // Both use the same wipeState/wipeColumn system as 2D.
     if (is1D) {
       uint16_t total   = strip.getLengthTotal();
       uint16_t turnLen = min((uint16_t)strip1DTurnLen,   total);
       uint16_t hazLen  = min((uint16_t)strip1DHazardLen, total);
 
-      if (brake && brakeFlashState) return; // Skip turn overlay during brake flash-on phase
+      if (brake && brakeFlashState) return; // don't overdraw during brake flash-on
 
       if (anySignal) {
         uint8_t r = (signalState == SIG_HAZARD) ? hazardR : turnR;
@@ -576,19 +511,17 @@ class AutoRearLightUsermod : public Usermod {
         applyBrightness(r, g, b);
 
         if (signalState == SIG_HAZARD) {
-          // Hazard: hard blink driven by raw signal, centered strip1DHazardLen pixels
+          // Hard blink driven by raw signal, centered hazLen pixels.
           if (signalActive) {
             uint16_t start = (total - hazLen) / 2;
             for (uint16_t i = start; i < start + hazLen; i++)
               strip.setPixelColor(i, RGBW32(r, g, b, 0));
           }
         } else {
-          // Turn: wipe animation over strip1DTurnLen pixels from the outer edge inward.
-          // wipeColumn is in pixel units here (virtual patternW = turnLen).
-          // Invariant: wipeColumn == 0 always means "blank" (post-wipe-out or not started).
-          //            wipeColumn == turnLen in WIPE_IDLE means "fully shown".
+          // Turn wipe — wipeColumn in pixel units (turnLen = virtual patternW).
+          // Invariant: 0 = blank sentinel, turnLen in WIPE_IDLE = fully shown.
 
-          // Signal change mid-animation → restart wipe from blank
+          // Signal change mid-animation → restart from blank
           if (signalState != prevSignalState) {
             wipeColumn     = 0;
             wipeState      = WIPE_IN;
@@ -596,7 +529,7 @@ class AutoRearLightUsermod : public Usermod {
             requestWipeOut = false;
           }
 
-          // Consume wipe intent from loop()
+          // Consume wipe intent
           if (requestWipeIn) {
             wipeColumn    = 0;
             wipeState     = WIPE_IN;
@@ -609,7 +542,7 @@ class AutoRearLightUsermod : public Usermod {
             requestWipeOut = false;
           }
 
-          // Advance wipe animation
+          // Advance wipe
           if (now - lastWipeStep >= wipeSpeedMs) {
             lastWipeStep = now;
             switch (wipeState) {
@@ -633,8 +566,7 @@ class AutoRearLightUsermod : public Usermod {
           }
           if (wipeColumn > turnLen) wipeColumn = turnLen;
 
-          // Draw range for active wipe frames.
-          // wipeColumn == 0 in WIPE_IDLE means blank (post-wipe-out): drawStart == drawEnd → nothing drawn.
+          // wipeColumn == 0 in WIPE_IDLE → blank: drawStart == drawEnd, nothing drawn.
           uint16_t drawStart = 0;
           uint16_t drawEnd   = wipeColumn;
           if (wipeState == WIPE_OUT && wipeOutMode == 1) {
@@ -642,8 +574,7 @@ class AutoRearLightUsermod : public Usermod {
             drawEnd   = turnLen;
           }
 
-          // Draw pixels from outer edge inward
-          for (uint16_t i = drawStart; i < drawEnd; i++) {
+          for (uint16_t i = drawStart; i < drawEnd; i++) { // outer edge inward
             int x = (signalState == SIG_LEFT) ? (int)(total - 1 - i) : (int)i;
             strip.setPixelColor(x, RGBW32(r, g, b, 0));
           }
@@ -652,12 +583,10 @@ class AutoRearLightUsermod : public Usermod {
 
       prevSignalState = signalState;
       return;
-    } // end 1D path
+    } // end 1D
 
     // ===== 2D PATH =====
-    // Do not early-exit if a wipe-out is still running — it must be allowed to finish
-    // even after signalState has already returned to SIG_NONE.
-    // Only skip if truly idle with nothing to draw.
+    // Allow wipe-out to finish even after signalState returns to SIG_NONE.
     if (!anySignal && wipeState == WIPE_IDLE) {
       prevSignalState = signalState;
       return;
@@ -674,9 +603,7 @@ class AutoRearLightUsermod : public Usermod {
     bool isProgmem = false;
 
     // ===== PATTERN SELECTION =====
-    // Use file-loaded pattern if available AND pointer is non-null.
-    // Null check is critical: malloc may have failed silently on low-RAM devices.
-    // A null pattern pointer always falls back to PROGMEM.
+    // null pointer = malloc failed silently; falls back to PROGMEM.
     switch (signalState) {
       case SIG_HAZARD:
         if (patternsLoaded && patternHazard) {
@@ -715,21 +642,19 @@ class AutoRearLightUsermod : public Usermod {
         break;
 
       default:
-        // SIG_NONE but wipe still running — no pattern geometry available, nothing to draw.
+        // SIG_NONE with wipe still running — no geometry, nothing to draw.
         prevSignalState = signalState;
         return;
     }
 
     // ===== WIPE REQUEST HANDLING =====
-    // Signal change mid-animation → restart wipe from blank to avoid visual glitch
-    if (signalState != prevSignalState) {
+    if (signalState != prevSignalState) { // signal change — restart from blank
       wipeColumn     = 0;
       wipeState      = WIPE_IN;
       requestWipeIn  = false;
       requestWipeOut = false;
     }
 
-    // Consume wipe intent from loop() BEFORE animation step and draw
     if (requestWipeIn) {
       wipeColumn    = 0;
       wipeState     = WIPE_IN;
@@ -741,7 +666,7 @@ class AutoRearLightUsermod : public Usermod {
       wipeColumn     = (wipeOutMode == 0) ? patternW : 0;
       requestWipeOut = false;
     } else {
-      requestWipeOut = false; // discard: either holdOnOff=true, or already cleared above
+      requestWipeOut = false; // discard if holdOnOff or already consumed
     }
 
     // ===== HAZARD: FULL FRAME, NO WIPE =====
@@ -752,8 +677,7 @@ class AutoRearLightUsermod : public Usermod {
     }
 
     // ===== WIPE ANIMATION STEP =====
-    // Invariant: wipeColumn == 0 in WIPE_IDLE → blank (post-wipe-out or not started).
-    //            wipeColumn == patternW in WIPE_IDLE → fully shown (post-wipe-in, holding).
+    // 0 in WIPE_IDLE = blank sentinel; patternW in WIPE_IDLE = fully shown.
     if (now - lastWipeStep >= wipeSpeedMs) {
       lastWipeStep = now;
       switch (wipeState) {
@@ -778,10 +702,7 @@ class AutoRearLightUsermod : public Usermod {
     if (wipeColumn > patternW) wipeColumn = patternW;
 
     // ===== DRAW RANGE CALCULATION =====
-    // Only meaningful during active wipe frames (wipeState != WIPE_IDLE).
-    // WIPE_IN:          draw columns [0, wipeColumn)
-    // WIPE_OUT mode 0 (reverse):       draw columns [0, wipeColumn)
-    // WIPE_OUT mode 1 (forward push):  draw columns [wipeColumn, patternW)
+    // mode 0/WIPE_IN: [0, wipeColumn) — mode 1 WIPE_OUT: [wipeColumn, patternW)
     uint16_t drawStart = 0;
     uint16_t drawEnd   = wipeColumn;
     if (wipeState == WIPE_OUT && wipeOutMode == 1) {
@@ -791,13 +712,11 @@ class AutoRearLightUsermod : public Usermod {
 
     // ===== DRAW =====
     if (wipeState == WIPE_IDLE) {
-      // wipeColumn == 0:        blank sentinel (post-wipe-out) — background only, nothing to draw
-      // wipeColumn == patternW: fully shown (post-wipe-in, holding until next wipe-out)
+      // 0 = blank sentinel; patternW = hold full until next wipe-out
       if (wipeColumn == patternW && anySignal) {
         drawFull(pattern, patternW, patternH, offsetX, offsetY, r, g, b, isProgmem);
       }
     } else {
-      // Active wipe animation — draw visible columns only
       for (uint16_t i = drawStart; i < drawEnd; i++) {
         int col = (signalState == SIG_LEFT) ? ((int)patternW - 1) - (int)i : (int)i;
         drawColumn(pattern, patternW, patternH, col, offsetX, offsetY, r, g, b, isProgmem);
@@ -875,9 +794,7 @@ class AutoRearLightUsermod : public Usermod {
     configComplete &= getJsonValue(overlay["Hazard Green"],     hazardG, 165);
     configComplete &= getJsonValue(overlay["Hazard Blue"],      hazardB, 0);
 
-    // Pattern file: compare with currentFile to detect changes.
-    // Do NOT call loadPatterns() here — LittleFS may not be ready.
-    // Set needLoadPatterns = true instead; loop() will handle it safely.
+    // Compare with currentFile to detect changes; defer load to loop().
     {
       const char* tmp_pf = top["Pattern File"] | "/autoRearLight.txt";
       if (strcmp(tmp_pf, currentFile) != 0) {
@@ -885,7 +802,7 @@ class AutoRearLightUsermod : public Usermod {
         patternFile[sizeof(patternFile) - 1] = '\0';
         strncpy(currentFile, patternFile, sizeof(currentFile) - 1);
         currentFile[sizeof(currentFile) - 1] = '\0';
-        needLoadPatterns = true; // Deferred — consumed in loop()
+        needLoadPatterns = true; // consumed in loop()
       }
     }
 
@@ -933,7 +850,6 @@ class AutoRearLightUsermod : public Usermod {
 #endif // AUTOREARL_DISABLE_CONFIG
 
   // ===== INFO PANEL =====
-  // Displayed in the WLED info tab for live debugging.
   void addToJsonInfo(JsonObject& root) override {
     JsonObject user = root["u"];
     if (user.isNull()) user = root.createNestedObject("u");
