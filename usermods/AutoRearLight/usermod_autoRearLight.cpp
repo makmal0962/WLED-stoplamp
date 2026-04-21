@@ -4,14 +4,14 @@ Created by MikaTsuki
 Find me on Facebook: MikaTsuki
 
 Created: 2026-03-29
-Last Updated: 2026-04-20
+Last Updated: 2026-04-21
 
 Useful flags in your platformio_override.ini:
 -D AUTOREARL_DISABLE_FILE_PATTERNS (useful if your board RAM is very tight)
 -D AUTOREARL_DISABLE_CONFIG (useful if your board is bootlooping)
 
 Known issues:
-- Do not use "Transpose" in segment settings. it flips the matrix width and hegiht value in 
+- Do not use "Transpose" in segment settings. it rotates the matrix width and hegiht value in 
   dimension call which this mod reads them constantly during overlay draw, causing patterns draw in 
   wrong place (truncated in bottom left matrix).
 */
@@ -25,12 +25,8 @@ Known issues:
   #warning "AutoRearLight: File Pattern Loading is DISABLED. Using hardcoded patterns only."
 #endif
 
-#ifdef ARDUINO_ARCH_ESP8266
-  #warning "AutoRearLight: You are using ESP8266! Do NOT DM me if your board (or YOU) crashes in the middle of the road! Use ESP32!"
-#endif
-
 #define ARRAY_W(arr) (sizeof(arr[0]) / sizeof(arr[0][0])) // column count of 2D array
-#define ARRAY_H(arr) (sizeof(arr)    / sizeof(arr[0]))     // row count of 2D array
+#define ARRAY_H(arr) (sizeof(arr)    / sizeof(arr[0]))    // row count of 2D array
 
 // ===== BUILT-IN PATTERNS (PROGMEM) =====
 // Fallback when no LittleFS file is loaded. 0 = off, 1 = on. [row][col]
@@ -95,6 +91,8 @@ class AutoRearLightUsermod : public Usermod {
     WIPE_IN,
     WIPE_OUT,
   };
+  
+  uint16_t wledReadyDelay = 3000; // Additional delay to make sure WLED is ready
 
   // ===== HARDWARE PIN CONFIG =====
   // Overridable via WLED config UI.
@@ -125,6 +123,7 @@ class AutoRearLightUsermod : public Usermod {
   // Fetched every frame in handleOverlayDraw() — safe against live resizing and boot ordering.
   uint16_t matrixWidth  = 0;
   uint16_t matrixHeight = 0;
+  bool dimReady = false;
 
   // ===== DEBOUNCE STATE =====
   bool debBrake      = false;
@@ -152,7 +151,6 @@ class AutoRearLightUsermod : public Usermod {
 
   unsigned long signalFellTime  = 0; // falling edge timestamp (both signals)
   unsigned long signalStartTime = 0; // rising edge timestamp (hazard window)
-  unsigned long lastBothTime    = 0; // last time both left+right were HIGH
 
   bool hazardWindowOpen = false; // waiting for hazardDetectMs to classify signal
 
@@ -174,11 +172,11 @@ class AutoRearLightUsermod : public Usermod {
   // ===== OVERLAY STATE =====
   bool          brakeFlashState  = false;
   unsigned long lastBrakeFlash   = 0;
-  uint16_t      wipeColumn       = 0;     // 0 = blank sentinel, patternW = fully shown
+  uint16_t      wipeColumn       = 0; // 0 = blank sentinel, patternW = fully shown
   unsigned long lastWipeStep     = 0;
   bool          holdOnOff        = false; // keep overlay visible during blink-off phase
   uint8_t       overlayBrightness = 255;
-  uint8_t       wipeOutMode      = 1;    // 0 = reverse, 1 = forward push, 2 = hard blank
+  uint8_t       wipeOutMode      = 1; // 0 = reverse, 1 = forward push, 2 = hard blank
   unsigned long wipeStartTime    = 0;
 
   // ===== 1D CONFIG =====
@@ -199,9 +197,9 @@ class AutoRearLightUsermod : public Usermod {
 
   // ===== DYNAMIC PATTERN BUFFERS =====
   // null = load failed or disabled; always falls back to PROGMEM.
-  uint8_t* patternLeft   = nullptr; uint16_t patternLeftW   = 8,  patternLeftH   = 8;
-  uint8_t* patternRight  = nullptr; uint16_t patternRightW  = 8,  patternRightH  = 8;
-  uint8_t* patternHazard = nullptr; uint16_t patternHazardW = 16, patternHazardH = 8;
+  uint8_t* patternLeft   = nullptr; uint16_t patternLeftW   = 10,  patternLeftH   = 9;
+  uint8_t* patternRight  = nullptr; uint16_t patternRightW  = 10,  patternRightH  = 9;
+  uint8_t* patternHazard = nullptr; uint16_t patternHazardW = 10, patternHazardH = 8;
   bool     patternsLoaded = false;
 
   // ===== HELPERS =====
@@ -223,8 +221,9 @@ class AutoRearLightUsermod : public Usermod {
   // Caps at 50% in TAIL state.
   void applyBrightness(uint8_t &r, uint8_t &g, uint8_t &b) {
     uint8_t eff = overlayBrightness;
-    if (currentState == TAIL && eff > 128) eff = 128;
+    if (currentState == TAIL && eff > 128) eff = 128; // above this is too bright at night
     if (eff == 255) return;
+    if (strip.getBrightness() > eff) strip.setBrightness(eff, false); // cap preset brightness too with this
     r = (r * eff) / 255;
     g = (g * eff) / 255;
     b = (b * eff) / 255;
@@ -240,7 +239,7 @@ class AutoRearLightUsermod : public Usermod {
   }
 
 #ifndef AUTOREARL_DISABLE_FILE_PATTERNS
-  // File format: # left/right/hazard → section header, 8x8 → skipped, 01100110 → pixel row.
+  // File format: # left/right/hazard -> section header, 8x8 -> skipped, 01100110 -> pixel row.
   // Max 32 rows × 64 cols per pattern. Call only from loop() — LittleFS must be ready.
   // On any malloc failure, all buffers freed and patternsLoaded stays false.
   void loadPatterns() {
@@ -426,12 +425,16 @@ class AutoRearLightUsermod : public Usermod {
     }
 
     // ===== STATE MACHINE =====
-    // Preset skipped during first 3s of boot — WLED not fully ready.
     State newState = head ? TAIL : IDLE;
     if (newState != currentState) {
       currentState = newState;
-      if (millis() > 3000) {
-        applyPreset(head ? presetTail : presetIdle);
+      if (millis() > wledReadyDelay) {
+        if (dimReady){
+          applyPreset(head ? presetTail : presetIdle);
+        }
+        else {
+          applyPreset (presetIdle); // always call idle. Do not use "Transpose" here
+        }
       }
     }
 
@@ -454,10 +457,16 @@ class AutoRearLightUsermod : public Usermod {
 
   // ===== OVERLAY DRAW =====
   void handleOverlayDraw() override {
+    // Always check strip length is not 0 to avoid crash
     if (strip.getLengthTotal() == 0 ) return;
-    // Fetched every frame — safe against live resizing and boot ordering.
-    matrixWidth  = strip.getMainSegment().virtualWidth();
-    matrixHeight = strip.getMainSegment().virtualHeight();
+    if (millis() < wledReadyDelay - 500) return; // minus 500, before applyPreset change
+    // only check dimension after boot and config saved, eliminates "Transpose" option breaks the dimension
+    if (!dimReady){
+      // we need to find alternatives for these calls! these are affected by segment draw
+      matrixWidth  = strip.getMainSegment().virtualWidth();
+      matrixHeight = strip.getMainSegment().virtualHeight();
+      dimReady = true;
+    }
 
     if (!enabled || matrixWidth <= 1) return;
 
@@ -521,7 +530,7 @@ class AutoRearLightUsermod : public Usermod {
           // Turn wipe — wipeColumn in pixel units (turnLen = virtual patternW).
           // Invariant: 0 = blank sentinel, turnLen in WIPE_IDLE = fully shown.
 
-          // Signal change mid-animation → restart from blank
+          // Signal change mid-animation -> restart from blank
           if (signalState != prevSignalState) {
             wipeColumn     = 0;
             wipeState      = WIPE_IN;
@@ -566,7 +575,7 @@ class AutoRearLightUsermod : public Usermod {
           }
           if (wipeColumn > turnLen) wipeColumn = turnLen;
 
-          // wipeColumn == 0 in WIPE_IDLE → blank: drawStart == drawEnd, nothing drawn.
+          // wipeColumn == 0 in WIPE_IDLE -> blank: drawStart == drawEnd, nothing drawn.
           uint16_t drawStart = 0;
           uint16_t drawEnd   = wipeColumn;
           if (wipeState == WIPE_OUT && wipeOutMode == 1) {
@@ -839,6 +848,7 @@ class AutoRearLightUsermod : public Usermod {
       pinMode(pinBrake,    INPUT);
       pinMode(pinLeft,     INPUT);
       pinMode(pinRight,    INPUT);
+      dimReady = false;
     }
 
     return configComplete;
