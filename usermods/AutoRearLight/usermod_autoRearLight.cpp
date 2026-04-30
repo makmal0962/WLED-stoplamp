@@ -11,9 +11,9 @@ Useful flags in your platformio_override.ini:
 -D AUTOREARL_DISABLE_CONFIG (useful if your board is bootlooping)
 
 Known issues:
-- Do not use "Transpose" in segment settings. it rotates the matrix width and hegiht value in 
-  dimension call which this mod reads them constantly during overlay draw, causing patterns draw in 
-  wrong place (truncated in bottom left matrix).
+- Do not use "Transpose" in segment settings. it swaps the matrix width and hegiht value in 
+  dimension call which this mod need to read them correctly during overlay draw, causing patterns draw in 
+  wrong place (truncated in bottom left matrix). only called them during boot and config save
 */
 
 #include "wled.h"
@@ -74,7 +74,7 @@ class AutoRearLightUsermod : public Usermod {
 
   enum State {
     IDLE, // headlamp off — full brightness
-    TAIL, // headlamp on  — capped at 50%
+    TAIL, // headlamp on  — capped with effectBrightnessLimit
   };
 
   // Mutually exclusive — eliminates impossible bool combos.
@@ -92,7 +92,7 @@ class AutoRearLightUsermod : public Usermod {
     WIPE_OUT,
   };
   
-  uint16_t wledReadyDelay = 3000; // Additional delay to make sure WLED is ready
+  uint16_t wledReadyDelay = 0; // Additional delay to make sure WLED is ready
 
   // ===== HARDWARE PIN CONFIG =====
   // Overridable via WLED config UI.
@@ -175,7 +175,7 @@ class AutoRearLightUsermod : public Usermod {
   uint16_t      wipeColumn       = 0; // 0 = blank sentinel, patternW = fully shown
   unsigned long lastWipeStep     = 0;
   bool          holdOnOff        = false; // keep overlay visible during blink-off phase
-  uint8_t       overlayBrightness = 255;
+  uint8_t       effectBrightnessLimit = 127;
   uint8_t       wipeOutMode      = 1; // 0 = reverse, 1 = forward push, 2 = hard blank
   unsigned long wipeStartTime    = 0;
 
@@ -218,15 +218,18 @@ class AutoRearLightUsermod : public Usermod {
   }
 
   // ===== BRIGHTNESS CONTROL =====
-  // Caps at 50% in TAIL state.
-  void applyBrightness(uint8_t &r, uint8_t &g, uint8_t &b) {
-    uint8_t eff = overlayBrightness;
-    if (currentState == TAIL && eff > 128) eff = 128; // above this is too bright at night
-    if (eff == 255) return;
-    if (strip.getBrightness() > eff) strip.setBrightness(eff, false); // cap preset brightness too with this
-    r = (r * eff) / 255;
-    g = (g * eff) / 255;
-    b = (b * eff) / 255;
+  // Dims WLED effect pixels only — overlays always draw at full brightness.
+  void applyEffectBrightnessLimit() {
+    uint8_t lim = effectBrightnessLimit;
+    if (lim >= 255) return;
+    uint16_t total = strip.getLengthTotal();
+    for (uint16_t i = 0; i < total; i++) {
+      uint32_t c = strip.getPixelColor(i);
+      uint8_t r = (R(c) * lim) >> 8;
+      uint8_t g = (G(c) * lim) >> 8;
+      uint8_t b = (B(c) * lim) >> 8;
+      strip.setPixelColor(i, RGBW32(r, g, b, W(c)));
+    }
   }
 
   // ===== PATTERN MEMORY MANAGEMENT =====
@@ -459,12 +462,12 @@ class AutoRearLightUsermod : public Usermod {
   void handleOverlayDraw() override {
     // Always check strip length is not 0 to avoid crash
     if (strip.getLengthTotal() == 0 ) return;
-    if (millis() < wledReadyDelay - 500) return; // minus 500, before applyPreset change
+    if (millis() < wledReadyDelay) return;
     // only check dimension after boot and config saved, eliminates "Transpose" option breaks the dimension
     if (!dimReady){
       // we need to find alternatives for these calls! these are affected by segment draw
-      matrixWidth  = strip.getMainSegment().virtualWidth();
-      matrixHeight = strip.getMainSegment().virtualHeight();
+      matrixWidth  = strip.getMainSegment().width();
+      matrixHeight = strip.getMainSegment().height();
       dimReady = true;
     }
 
@@ -475,10 +478,12 @@ class AutoRearLightUsermod : public Usermod {
     bool brake        = lastBrake;
     bool signalActive = (lastLeft || lastRight); // raw blink — drives hazard hard-blink
     bool anySignal    = (signalState != SIG_NONE);
+    uint16_t frameMs  = (strip.getTargetFps() > 0) ? (1000 / strip.getTargetFps()) : 20;
+
+    if (currentState == TAIL) applyEffectBrightnessLimit();
 
     // ===== BACKGROUND FILL =====
     uint8_t br = bgR, bgg = bgG, bb = bgB;
-    applyBrightness(br, bgg, bb);
     if (brake || anySignal) {
       for (uint16_t i = 0; i < strip.getLengthTotal(); i++)
         strip.setPixelColor(i, RGBW32(br, bgg, bb, 0));
@@ -494,7 +499,6 @@ class AutoRearLightUsermod : public Usermod {
       }
       if (brakeFlashState) {
         uint8_t r = 255, g = 0, b = 0;
-        applyBrightness(r, g, b);
         for (uint16_t i = 0; i < strip.getLengthTotal(); i++)
           strip.setPixelColor(i, RGBW32(r, g, b, 0));
       } else {
@@ -517,7 +521,6 @@ class AutoRearLightUsermod : public Usermod {
         uint8_t r = (signalState == SIG_HAZARD) ? hazardR : turnR;
         uint8_t g = (signalState == SIG_HAZARD) ? hazardG : turnG;
         uint8_t b = (signalState == SIG_HAZARD) ? hazardB : turnB;
-        applyBrightness(r, g, b);
 
         if (signalState == SIG_HAZARD) {
           // Hard blink driven by raw signal, centered hazLen pixels.
@@ -552,28 +555,31 @@ class AutoRearLightUsermod : public Usermod {
           }
 
           // Advance wipe
-          if (now - lastWipeStep >= wipeSpeedMs) {
+          if (wipeSpeedMs == 0) {
+            if      (wipeState == WIPE_IN)  { wipeColumn = turnLen; wipeState = WIPE_IDLE; }
+            else if (wipeState == WIPE_OUT) { wipeColumn = 0;        wipeState = WIPE_IDLE; }
+          } else if (now - lastWipeStep >= wipeSpeedMs) {
             lastWipeStep = now;
+            uint16_t steps = (wipeSpeedMs > 0 && wipeSpeedMs < frameMs) ? max((uint16_t)1, (uint16_t)(frameMs / wipeSpeedMs)) : 1;
             switch (wipeState) {
               case WIPE_IN:
-                if (wipeColumn < turnLen) wipeColumn++;
-                else wipeState = WIPE_IDLE; // wipeColumn == turnLen: fully shown
+                wipeColumn = min((uint16_t)(wipeColumn + steps), turnLen);
+                if (wipeColumn >= turnLen) wipeState = WIPE_IDLE;
                 break;
               case WIPE_OUT:
                 if (wipeOutMode == 0) {
-                  if (wipeColumn > 0) wipeColumn--;
-                  else wipeState = WIPE_IDLE; // wipeColumn already 0: blank sentinel
+                  wipeColumn = (wipeColumn > steps) ? wipeColumn - steps : 0;
+                  if (wipeColumn == 0) wipeState = WIPE_IDLE;
                 } else if (wipeOutMode == 1) {
-                  if (wipeColumn < turnLen) wipeColumn++;
-                  else { wipeColumn = 0; wipeState = WIPE_IDLE; } // normalize to blank sentinel
-                } else { // mode 2: hard blank
-                  wipeColumn = 0; wipeState = WIPE_IDLE;          // normalize to blank sentinel
+                  wipeColumn = min((uint16_t)(wipeColumn + steps), turnLen);
+                  if (wipeColumn >= turnLen) { wipeColumn = 0; wipeState = WIPE_IDLE; }
+                } else {
+                  wipeColumn = 0; wipeState = WIPE_IDLE;
                 }
                 break;
               case WIPE_IDLE: break;
             }
           }
-          if (wipeColumn > turnLen) wipeColumn = turnLen;
 
           // wipeColumn == 0 in WIPE_IDLE -> blank: drawStart == drawEnd, nothing drawn.
           uint16_t drawStart = 0;
@@ -604,7 +610,6 @@ class AutoRearLightUsermod : public Usermod {
     uint8_t r = (signalState == SIG_HAZARD) ? hazardR : turnR;
     uint8_t g = (signalState == SIG_HAZARD) ? hazardG : turnG;
     uint8_t b = (signalState == SIG_HAZARD) ? hazardB : turnB;
-    applyBrightness(r, g, b);
 
     const uint8_t* pattern;
     uint16_t patternW, patternH;
@@ -687,28 +692,31 @@ class AutoRearLightUsermod : public Usermod {
 
     // ===== WIPE ANIMATION STEP =====
     // 0 in WIPE_IDLE = blank sentinel; patternW in WIPE_IDLE = fully shown.
-    if (now - lastWipeStep >= wipeSpeedMs) {
+    if (wipeSpeedMs == 0) {
+      if      (wipeState == WIPE_IN)  { wipeColumn = patternW; wipeState = WIPE_IDLE; }
+      else if (wipeState == WIPE_OUT) { wipeColumn = 0;        wipeState = WIPE_IDLE; }
+    } else if (now - lastWipeStep >= wipeSpeedMs) {
       lastWipeStep = now;
+      uint16_t steps = (wipeSpeedMs > 0 && wipeSpeedMs < frameMs) ? max((uint16_t)1, (uint16_t)(frameMs / wipeSpeedMs)) : 1;
       switch (wipeState) {
         case WIPE_IN:
-          if (wipeColumn < patternW) wipeColumn++;
-          else wipeState = WIPE_IDLE; // wipeColumn == patternW: fully shown
+          wipeColumn = min((uint16_t)(wipeColumn + steps), patternW);
+          if (wipeColumn >= patternW) wipeState = WIPE_IDLE;
           break;
         case WIPE_OUT:
           if (wipeOutMode == 0) {
-            if (wipeColumn > 0) wipeColumn--;
-            else wipeState = WIPE_IDLE; // wipeColumn already 0: blank sentinel
+            wipeColumn = (wipeColumn > steps) ? wipeColumn - steps : 0;
+            if (wipeColumn == 0) wipeState = WIPE_IDLE;
           } else if (wipeOutMode == 1) {
-            if (wipeColumn < patternW) wipeColumn++;
-            else { wipeColumn = 0; wipeState = WIPE_IDLE; } // normalize to blank sentinel
-          } else { // mode 2: hard blank
-            wipeColumn = 0; wipeState = WIPE_IDLE;          // normalize to blank sentinel
+            wipeColumn = min((uint16_t)(wipeColumn + steps), patternW);
+            if (wipeColumn >= patternW) { wipeColumn = 0; wipeState = WIPE_IDLE; }
+          } else {
+            wipeColumn = 0; wipeState = WIPE_IDLE;
           }
           break;
         case WIPE_IDLE: break;
       }
     }
-    if (wipeColumn > patternW) wipeColumn = patternW;
 
     // ===== DRAW RANGE CALCULATION =====
     // mode 0/WIPE_IN: [0, wipeColumn) — mode 1 WIPE_OUT: [wipeColumn, patternW)
@@ -746,9 +754,9 @@ class AutoRearLightUsermod : public Usermod {
     top["Enable Usermod"] = enabled;
 
     JsonObject overlay = top.createNestedObject("Overlay Settings");
-    overlay["Overlay Brightness"]                                           = overlayBrightness;
+    overlay["Effect Brightness Limit"]                 = effectBrightnessLimit;
     overlay["Keep Turns Pattern When Signals Falling"] = holdOnOff;
-    overlay["Exit Style, 0: Rev, 1: Fwd, 2: OFF"]                         = wipeOutMode;
+    overlay["Exit Style, 0: Rev, 1: Fwd, 2: OFF"]      = wipeOutMode;
     overlay["Bg Red"]   = bgR;
     overlay["Bg Green"] = bgG;
     overlay["Bg Blue"]  = bgB;
@@ -790,7 +798,7 @@ class AutoRearLightUsermod : public Usermod {
     configComplete &= getJsonValue(top["Enable Usermod"], enabled, true);
 
     JsonObject overlay = top["Overlay Settings"];
-    configComplete &= getJsonValue(overlay["Overlay Brightness"],                                           overlayBrightness, 255);
+    configComplete &= getJsonValue(overlay["Effect Brightness Limit"], effectBrightnessLimit, 127);
     configComplete &= getJsonValue(overlay["Keep Turns Pattern When Signals Falling"], holdOnOff,         false);
     configComplete &= getJsonValue(overlay["Exit Style, 0: Rev, 1: Fwd, 2: OFF"],                         wipeOutMode,       1);
     configComplete &= getJsonValue(overlay["Bg Red"],   bgR,    40);
