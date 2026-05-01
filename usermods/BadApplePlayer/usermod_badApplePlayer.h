@@ -78,26 +78,21 @@ private:
 #endif
     }
 
-    void renderFrame() {
-        uint8_t buf[BA_BPF];
+    uint8_t _frameBuf[BA_BPF]; // current decoded frame buffer
+    bool    _frameReady = false;
+
+    void _loadFrame() {
         for (int i = 0; i < BA_BPF; i++) {
             int b = readByte();
             if (b < 0) { stopPlayback(); return; }
-            buf[i] = (uint8_t)b;
+            _frameBuf[i] = (uint8_t)b;
         }
-
-        for (int px = 0; px < BA_PPF; px++) {
-            uint8_t level  = (buf[(px * 2) / 8] >> (6 - ((px * 2) % 8))) & 0x03;
-            uint8_t bright = (uint16_t)BA_LEVELS[level] * _brightness / 255;
-            strip.setPixelColorXY(px % BA_W, px / BA_W, bright, bright, bright);
-        }
-
+        _frameReady = true;
         _curFrame++;
         if (_curFrame >= _frameCount) {
             if (_loop) {
-                // seek back to data start, reset RLE state
                 _file.seek(_dataStart);
-                _rleLeft = 0;
+                _rleLeft  = 0;
                 _curFrame = 0;
             } else {
                 stopPlayback();
@@ -105,6 +100,14 @@ private:
         }
     }
 
+    void _paintFrame() {
+        if (!_frameReady) return;
+        for (int px = 0; px < BA_PPF; px++) {
+            uint8_t level  = (_frameBuf[(px * 2) / 8] >> (6 - ((px * 2) % 8))) & 0x03;
+            uint8_t bright = (uint16_t)BA_LEVELS[level] * _brightness / 255;
+            strip.setPixelColorXY(px % BA_W, px / BA_W, bright, bright, bright);
+        }
+    }
     void stopPlayback() {
         _playing = false;
         if (_file) _file.close();
@@ -129,12 +132,20 @@ public:
 
     void loop() override {}
 
-    void handleOverlayDraw() override {
+    void handleOverlayDraw() override {}
+
+    void renderTick() {
         if (!_enabled || !_playing) return;
         uint32_t now = millis();
-        if (now - _lastRender < (1000u / _fps)) return;
-        _lastRender = now;
-        renderFrame();
+        uint32_t frameMs = 1000u / _fps;
+        if (now - _lastRender < frameMs) {
+            _paintFrame();
+            return;
+        }
+        _lastRender += frameMs;
+        if (now - _lastRender >= frameMs) _lastRender = now;
+        _loadFrame();
+        _paintFrame();
     }
 
     void addToConfig(JsonObject& root) override {
@@ -149,10 +160,12 @@ public:
         JsonObject top = root["BadApple"];
         if (top.isNull()) return false;
         bool wasEnabled = _enabled;
+        int fps = _fps;
         getJsonValue(top["enabled"],    _enabled);
-        getJsonValue(top["fps"],        _fps);
+        getJsonValue(top["fps"],        fps);
         getJsonValue(top["brightness"], _brightness);
         getJsonValue(top["loop"],       _loop);
+        _fps = (uint8_t)fps;
         if (_enabled && !wasEnabled) startPlayback();
         if (!_enabled && wasEnabled)  stopPlayback();
         return true;
@@ -172,3 +185,6 @@ public:
 
 static BadAppleUsermod badApple;
 REGISTER_USERMOD(badApple);
+
+// global accessor for other usermods
+inline BadAppleUsermod* getBadAppleUsermod() { return &badApple; }

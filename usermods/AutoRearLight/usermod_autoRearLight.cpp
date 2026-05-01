@@ -18,6 +18,10 @@ Known issues:
 
 #include "wled.h"
 #include "Arduino.h"
+#include "../BadApplePlayer/usermod_badApplePlayer.h"
+
+// forward declaration
+// BadAppleUsermod* getBadAppleUsermod();
 
 #define USERMOD_ID_AUTOREARL 200
 
@@ -460,6 +464,8 @@ class AutoRearLightUsermod : public Usermod {
 
   // ===== OVERLAY DRAW =====
   void handleOverlayDraw() override {
+    getBadAppleUsermod()->renderTick();
+
     // Always check strip length is not 0 to avoid crash
     if (strip.getLengthTotal() == 0 ) return;
     if (millis() < wledReadyDelay) return;
